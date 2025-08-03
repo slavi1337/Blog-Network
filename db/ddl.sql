@@ -1,5 +1,5 @@
 CREATE TYPE user_role AS ENUM ('standard', 'moderator');
-CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived');
+CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived','scheduled');
 CREATE TYPE notification_type AS ENUM ('new_post_from_followed', 'reply_to_comment');
 CREATE TYPE issue_type AS ENUM ('bug_report', 'inappropriate_content', 'spam', 'other');
 CREATE TYPE issue_status AS ENUM ('new', 'in_progress', 'resolved', 'rejected');
@@ -16,12 +16,13 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     role user_role NOT NULL DEFAULT 'standard',
     profile_picture_url VARCHAR(255),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	clerk_id VARCHAR(255) UNIQUE
 );
 
 CREATE TABLE categories (
@@ -59,6 +60,7 @@ CREATE TABLE posts (
     view_count INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
+	publish_at TIMESTAMPTZ
 
     CONSTRAINT fk_author FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_category FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -154,6 +156,7 @@ CREATE TABLE notifications (
     related_entity_id INT,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	secondary_entity_id INT
     CONSTRAINT fk_recipient FOREIGN KEY(recipient_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
