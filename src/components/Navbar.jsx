@@ -16,6 +16,9 @@ const Navbar = () => {
         <Link to="/" className="hover:text-orange-500 transition-colors">
           Home
         </Link>
+        <Link to="/about" className="hover:text-orange-500 transition-colors">
+          About
+        </Link>
         <SignedIn>
           <UserButton afterSignOutUrl="/" />
         </SignedIn>
