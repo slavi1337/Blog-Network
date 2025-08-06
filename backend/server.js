@@ -3,6 +3,7 @@ const express = require("express");
 const { Webhook } = require("svix");
 const { Pool } = require("pg");
 const bodyParser = require("body-parser");
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
@@ -19,18 +20,16 @@ const pool = new Pool({
   },
 });
 
-// Middleware za parsiranje JSON body-ja
-app.use(express.json());
+app.use(express.static(path.join(__dirname, "../dist")));
 
-// Endpoint za webhook za kreiranje korisnika
 app.post(
   "/api/webhooks/clerk",
   bodyParser.raw({ type: "application/json" }),
   async (req, res) => {
     const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
     if (!WEBHOOK_SECRET) {
-      console.error("Greska: CLERK_WEBHOOK_SECRET nije podesen na serveru.");
-      return res.status(500).send("Webhook secrte nije konfigurisan.");
+      console.error("Greška: CLERK_WEBHOOK_SECRET nije podešen na serveru.");
+      return res.status(500).send("Webhook secret nije konfigurisan.");
     }
 
     const svix_id = req.headers["svix-id"];
@@ -59,6 +58,11 @@ app.post(
     const { type, data } = evt;
 
     if (type === "user.created") {
+      console.log(
+        "Događaj 'user.created' primljen. Podaci:",
+        JSON.stringify(data, null, 2)
+      );
+
       const {
         id,
         email_addresses,
@@ -67,52 +71,60 @@ app.post(
         username,
         image_url,
       } = data;
+
       const email = email_addresses[0]?.email_address;
+
       if (!email) {
+        console.error("Korisnik nema email adresu.");
         return res
           .status(200)
-          .json({ message: "Korisnik nema email, preskace se." });
+          .json({ message: "Korisnik nema email, preskače se." });
       }
 
       try {
-        const dbUsername =
-          username || email.split("@")[0] + Math.floor(Math.random() * 1000);
+        const dbUsername = username || email.split("@")[0];
+
+        console.log(`Pokušavam da upišem korisnika: ${dbUsername}`);
 
         const query = `
-        INSERT INTO users (clerk_id, username, email, first_name, last_name, profile_picture_url)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (clerk_id) DO NOTHING;`;
+      INSERT INTO users (username, email, first_name, last_name, role, profile_picture_url)
+      VALUES ($1, $2, $3, $4, 'standard', $5)
+      ON CONFLICT (email) DO NOTHING
+      RETURNING id; -- Vrati ID novoupisanog korisnika
+    `;
 
-        const values = [
-          id,
-          dbUsername,
-          email,
-          first_name,
-          last_name,
-          image_url,
-        ];
-        await pool.query(query, values);
+        const values = [dbUsername, email, first_name, last_name, image_url];
 
-        console.log(`Korisnik ${dbUsername} je obradjen.`);
-        res.status(201).send("Webhook uspešno obradjen.");
+        const result = await pool.query(query, values);
+
+        if (result.rowCount > 0) {
+          console.log(
+            `Korisnik ${dbUsername} je upisan u bazu sa ID: ${result.rows[0].id}`
+          );
+        } else {
+          console.log(
+            `Korisnik sa emailom ${email} već postoji u bazi, preskače se.`
+          );
+        }
+
+        res.status(201).send("Webhook uspešno obrađen.");
       } catch (dbErr) {
         console.error("Database error:", dbErr);
-        res.status(500).json({ error: "Internal server error." });
+        res
+          .status(500)
+          .json({ error: "Internal server error.", details: dbErr.message });
       }
     } else {
-      res.status(200).send("Webhook primljen ali nije obradjen.");
+      console.log(`Događaj '${type}' primljen, ali se ne obrađuje.`);
+      res.status(200).send("Webhook primljen ali nije obrađen.");
     }
   }
 );
 
-app.use(express.static(path.join(__dirname, "../dist")));
-
-// "Catch-all" ruta za sve ostale req
 app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../dist", "index.html"));
 });
 
-// Pokretanje servera
 app.listen(port, () => {
-  console.log(`Backend server slusa na http://localhost:${port}`);
+  console.log(`Backend server sluša na http://localhost:${port}`);
 });
