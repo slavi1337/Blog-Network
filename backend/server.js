@@ -20,6 +20,66 @@ const pool = new Pool({
   },
 });
 
+app.use(express.json());
+
+app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+
+  const { title, categoryId, content } = req.body;
+
+  if (!title || !content || !categoryId) {
+    return res
+      .status(400)
+      .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
+  }
+
+  try {
+    const userResult = await pool.query(
+      "SELECT id FROM users WHERE clerk_id = $1",
+      [clerkId]
+    );
+    if (userResult.rowCount === 0) {
+      return res.status(404).json({ error: "Korisnik nije pronađen u bazi." });
+    }
+    const authorId = userResult.rows[0].id;
+
+    const slugBase = title
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    const slug = `${slugBase}-${Date.now()}`;
+    const query = `
+            INSERT INTO posts (author_id, category_id, title, slug, content, status, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, 'published', NOW(), NOW())
+            RETURNING id, slug; -- Vrati ID i slug novog posta
+        `;
+    const values = [authorId, categoryId, title, slug, content];
+
+    const newPost = await pool.query(query, values);
+
+    res.status(201).json({
+      message: "Post uspešno kreiran!",
+      post: newPost.rows[0],
+    });
+  } catch (error) {
+    console.error("Greška pri kreiranju posta:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.get("/api/categories", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, name FROM categories ORDER BY name ASC"
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju kategorija:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
   if (!req.auth.userId) {
     return res.status(401).json({ error: "Niste autorizovani." });
@@ -36,8 +96,11 @@ app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
                 u.last_name,
                 u.profile_picture_url,
                 u.created_at,
+                -- Broj objava korisnika
                 (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id) AS post_count,
+                -- Broj ljudi koje korisnik prati (following)
                 (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
+                -- Broj ljudi koji prate korisnika (followers)
                 (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count
             FROM
                 users u
@@ -54,7 +117,7 @@ app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
     }
 
     const postsQuery = `
-            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at
+            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at 
             FROM posts p
             JOIN users u ON p.author_id = u.id
             WHERE u.clerk_id = $1
