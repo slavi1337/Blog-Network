@@ -1,6 +1,6 @@
 CREATE TYPE user_role AS ENUM ('standard', 'moderator');
 CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived','scheduled');
-CREATE TYPE notification_type AS ENUM ('new_post_from_followed', 'reply_to_comment');
+CREATE TYPE notification_type AS ENUM ('new_post_from_followed', 'reply_to_comment','issue_status_change');
 CREATE TYPE issue_type AS ENUM ('bug_report', 'inappropriate_content', 'spam', 'other');
 CREATE TYPE issue_status AS ENUM ('new', 'in_progress', 'resolved', 'rejected');
 CREATE TYPE media_type AS ENUM ('image', 'video', 'audio');
@@ -60,7 +60,8 @@ CREATE TABLE posts (
     view_count INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-	publish_at TIMESTAMPTZ
+	publish_at TIMESTAMPTZ,
+	is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
 
     CONSTRAINT fk_author FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_category FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -156,7 +157,7 @@ CREATE TABLE notifications (
     related_entity_id INT,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-	secondary_entity_id INT
+	secondary_entity_id INT,
     CONSTRAINT fk_recipient FOREIGN KEY(recipient_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -181,6 +182,13 @@ CREATE TABLE reported_issues (
     resolved_by_admin_id INT,
     CONSTRAINT fk_reporter_user FOREIGN KEY(reporter_user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_resolved_by_admin FOREIGN KEY(resolved_by_admin_id) REFERENCES admins(id) ON DELETE SET NULL
+);
+
+CREATE TABLE featured_post (
+    id INT PRIMARY KEY DEFAULT 1,
+    post_id INT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT fk_featured_post_id FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_posts_author_id ON posts(author_id);
