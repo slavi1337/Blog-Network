@@ -1,35 +1,29 @@
-import { Routes, Route, Link } from "react-router-dom";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Routes, Route } from "react-router-dom";
+
 import MainLayout from "./layouts/MainLayout";
+
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
-import AboutPage from "./pages/AboutPage";
-import BlogCreationPage from "./pages/BlogCreationPage";
+
+import ProfilePage from "./pages/ProfilePage";
+
+import ProfilePosts from "./components/ProfilePosts";
+import SavedPosts from "./pages/SavedPostsPage";
+import ReadingHistory from "./pages/ReadingHistoryPage";
 
 const HomePage = () => (
   <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
-    <div className="flex flex-col md:flex-row justify-between items-center border-b-2 border-gray-300 pb-8">
-      <div>
-        <h1 className="text-4xl font-bold">Dobrodosli na Blog Network!</h1>
-        <p className="mt-4 text-gray-600">/////////</p>
-      </div>
+    <h1 className="text-3xl font-bold">Dobrodošli na Blog Network!</h1>
+    <p className="mt-4">
+      Ovo je početna stranica. Izaberite opciju iz navigacije.
+    </p>
+  </div>
+);
 
-      <div className="text-center md:text-right mt-8 md:mt-0">
-        <SignedIn>
-          <p className="text-lg font-semibold">test</p>
-        </SignedIn>
-        <SignedOut>
-          <Link to="/sign-up">
-            <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-              registruj se
-            </button>
-          </Link>
-        </SignedOut>
-      </div>
-    </div>
-    <div className="mt-10 text-center text-gray-500">
-      <p>Soon</p>
-    </div>
+const EditProfilePage = () => (
+  <div>
+    <h2 className="text-2xl font-bold mb-6">Uređivanje Profila</h2>
+    <p>Ova funkcionalnost će biti implementirana uskoro.</p>
   </div>
 );
 
@@ -38,10 +32,17 @@ const App = () => {
     <Routes>
       <Route path="/sign-in/*" element={<SignInPage />} />
       <Route path="/sign-up/*" element={<SignUpPage />} />
-      <Route path="/create-blog/*" element={<BlogCreationPage/>} />
+
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="about" element={<AboutPage />} />
+
+        <Route path="profile/:username" element={<ProfilePage />}>
+          <Route index element={<ProfilePosts />} />
+
+          <Route path="saved" element={<SavedPosts />} />
+          <Route path="history" element={<ReadingHistory />} />
+          <Route path="edit" element={<EditProfilePage />} />
+        </Route>
       </Route>
     </Routes>
   );
