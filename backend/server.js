@@ -3,7 +3,7 @@ const express = require("express");
 const { Webhook } = require("svix");
 const { Pool } = require("pg");
 const bodyParser = require("body-parser");
-const fs = require("fs");
+const { ClerkExpressWithAuth } = require("@clerk/clerk-sdk-node");
 const path = require("path");
 
 const app = express();
@@ -18,6 +18,105 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+});
+
+app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
+  if (!req.auth.userId) {
+    return res.status(401).json({ error: "Niste autorizovani." });
+  }
+
+  const clerkId = req.auth.userId;
+
+  try {
+    const profileQuery = `
+            SELECT
+                u.id,
+                u.username,
+                u.first_name,
+                u.last_name,
+                u.profile_picture_url,
+                u.created_at,
+                (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id) AS post_count,
+                (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
+                (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count
+            FROM
+                users u
+            WHERE
+                u.clerk_id = $1;
+        `;
+
+    const { rows } = await pool.query(profileQuery, [clerkId]);
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Korisnik nije pronađen u našoj bazi." });
+    }
+
+    const postsQuery = `
+            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at
+            FROM posts p
+            JOIN users u ON p.author_id = u.id
+            WHERE u.clerk_id = $1
+            ORDER BY p.created_at DESC;
+        `;
+
+    const postsResult = await pool.query(postsQuery, [clerkId]);
+
+    const profileData = {
+      ...rows[0],
+      posts: postsResult.rows,
+    };
+
+    res.status(200).json(profileData);
+  } catch (error) {
+    console.error("Greška pri dohvatanju profila:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+
+  try {
+    const query = `
+            SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
+            FROM saved_posts sp
+            JOIN posts p ON sp.post_id = p.id
+            JOIN users u_reader ON sp.user_id = u_reader.id
+            JOIN users u_author ON p.author_id = u_author.id
+            WHERE u_reader.clerk_id = $1
+            ORDER BY sp.saved_at DESC;
+        `;
+    const { rows } = await pool.query(query, [clerkId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju sačuvanih postova:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.get("/api/posts/history", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+
+  try {
+    const query = `
+            SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
+            FROM reading_history rh
+            JOIN posts p ON rh.post_id = p.id
+            JOIN users u_reader ON rh.user_id = u_reader.id
+            JOIN users u_author ON p.author_id = u_author.id
+            WHERE u_reader.clerk_id = $1
+            ORDER BY rh.read_at DESC;
+        `;
+    const { rows } = await pool.query(query, [clerkId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju istorije čitanja:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
 });
 
 app.use(express.static(path.join(__dirname, "../dist")));
@@ -87,13 +186,19 @@ app.post(
         console.log(`Pokušavam da upišem korisnika: ${dbUsername}`);
 
         const query = `
-      INSERT INTO users (username, email, first_name, last_name, role, profile_picture_url)
-      VALUES ($1, $2, $3, $4, 'standard', $5)
-      ON CONFLICT (email) DO NOTHING
-      RETURNING id; -- Vrati ID novoupisanog korisnika
-    `;
+        INSERT INTO users (clerk_id, username, email, first_name, last_name, role, profile_picture_url)
+        VALUES ($1, $2, $3, $4, $5, 'standard', $6)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING id;`;
 
-        const values = [dbUsername, email, first_name, last_name, image_url];
+        const values = [
+          id,
+          dbUsername,
+          email,
+          first_name,
+          last_name,
+          image_url,
+        ];
 
         const result = await pool.query(query, values);
 
