@@ -26,9 +26,9 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
 
-  const { title, categoryId, content } = req.body;
+  const { title, categoryId, content, tags } = req.body;
 
-  if (!title || !content || !categoryId) {
+  if (!title || !content || !categoryId || !tags) {
     return res
       .status(400)
       .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
@@ -49,6 +49,12 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "");
     const slug = `${slugBase}-${Date.now()}`;
+
+    const listaTagova = tags
+      .split(/\s+/)
+      .map(t => t.replace(/^#/, ''))
+      .filter(t => t.length > 0);  
+
     const query = `
             INSERT INTO posts (author_id, category_id, title, slug, content, status, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, 'published', NOW(), NOW())
@@ -62,6 +68,31 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       message: "Post uspešno kreiran!",
       post: newPost.rows[0],
     });
+
+    for (const tag of listaTagova) {
+      const {rows} = await pool.query(
+        "SELECT id FROM tags WHERE name = $1",
+        [tag]
+      );
+
+      let tagId;
+
+      if (rows.length > 0) {
+        tagId = rows[0].id;
+      } else {
+        const rezultatInserta = await pool.query(
+          "INSERT INTO tags (name) VALUES ($1) RETURNING id",
+          [tag]
+        );
+        tagId = rezultatInserta.rows[0].id;
+      }
+      
+      const povezanTag = await pool.query(
+        "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
+        [newPost.rows[0].id, tagId]
+      )
+
+    }
   } catch (error) {
     console.error("Greška pri kreiranju posta:", error);
     res.status(500).json({ error: "Greška na serveru." });

@@ -8,6 +8,7 @@ import ReactQuill from "react-quill-new";
 const BlogCreationPage = () => {
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [tags, setTags] = useState("");
   const [content, setContent] = useState("");
 
   const [categories, setCategories] = useState([]);
@@ -74,6 +75,7 @@ const BlogCreationPage = () => {
           title,
           categoryId: Number(categoryId),
           content,
+          tags,
         }),
       });
 
@@ -150,6 +152,24 @@ const BlogCreationPage = () => {
                 ))
               )}
             </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="tags"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Tagovi
+            </label>
+            <input
+              type="text"
+              id="tags"
+              placeholder="info coffee brewing"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+              required
+            />
           </div>
 
           <div>
