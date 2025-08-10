@@ -44,8 +44,7 @@ const SinglePostPage = () => {
       </p>
       <div className="prose" dangerouslySetInnerHTML={{ __html: post.content }} />
         <div>
-            {/* trenutno ne radi jer se komponenti salju post id i user id koji su u stvari vjerovatno samo slug i clerk id koji nisu primarni kljucevi te dodje do greske pri objavi komentara, jednostavan fix ali nisam imala vremena da zavrsim, uskoro popravljam, comming soon, TODO*/}
-                {/*{isSignedIn ? (
+            {isSignedIn ? (
             <CreateComment
             postId={post.id}
             userId={user.id}
@@ -55,8 +54,9 @@ const SinglePostPage = () => {
         ) : (
             <div className="text-center mt-6 text-gray-600">
             <p>Morate biti prijavljeni da biste ostavili komentar.</p>
+            
             </div>
-        )}*/}
+        )}
       </div>
     </div>
   );
