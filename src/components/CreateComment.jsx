@@ -5,6 +5,7 @@ const CreateComment = ({ postId, userId, onCommentAdded }) => {
 
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +25,12 @@ const CreateComment = ({ postId, userId, onCommentAdded }) => {
       setContent("");
       setError("");
       onCommentAdded(data.comment);
+
+      setSuccessMessage("Komentar uspešno dodat!");
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+
     } else {
       const errData = await res.json();
       setError(errData.error || "Došlo je do greške.");
@@ -39,7 +46,8 @@ const CreateComment = ({ postId, userId, onCommentAdded }) => {
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-red-700 bg-red-200 pt-2 pb-2 text-center">{error}</p>}
+      {successMessage && <p className="text-green-700 bg-green-200 pt-2 pb-2 text-center">{successMessage}</p>}
       <button
         type="submit"
         className="mt-2 px-4 py-2 bg-orange-600 text-white rounded"
