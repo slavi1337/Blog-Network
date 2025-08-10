@@ -31,7 +31,7 @@ const HomePage = () => (
       <SignedIn>
         <Link to="/create-blog">
           <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            Kreiraj Novi Blog
+            Kreiraj Novu Objavu
           </button>
         </Link>
       </SignedIn>
