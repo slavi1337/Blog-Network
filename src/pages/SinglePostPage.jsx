@@ -31,7 +31,7 @@ const SinglePostPage = () => {
 
   if (loading) return <p>Učitavanje...</p>;
   if (error) return <p>Greška: {error}</p>;
-  if (!post) return <p>Post nije pronađen.</p>;
+  if (!post) return <p>Objava nije pronadjena.</p>;
 
   return (
     <div className="p-4">
