@@ -320,6 +320,75 @@ app.post(
   }
 );
 
+app.get("/api/posts/:slug", async (req, res) => {
+
+  const {slug} = req.params;
+
+  try {
+    const postResult = await pool.query(
+      `SELECT 
+         p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
+         u.username AS author_username,
+         c.name AS category_name
+       FROM posts p
+       JOIN users u ON p.author_id = u.id
+       JOIN categories c ON p.category_id = c.id
+       WHERE p.slug = $1`,
+      [slug]
+    );
+
+    if (postResult.rowCount === 0) {
+      return res.status(404).json({ error: "Post nije pronađen." });
+    }
+
+    res.json(postResult.rows[0]);
+  } catch (error) {
+    console.error("Greška pri dohvatanju posta:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+// OBJAVLJIVANJE KOMENTARA NA OBJAVU
+
+app.post("/api/comments", async (req, res) => {
+  const { post_id, user_id, content } = req.body;
+
+  if (!post_id || !user_id || !content) {
+    return res.status(400).json({ error: "Sva polja su obavezna." });
+  }
+
+  try {
+
+    // pronalazenje id-a korisnika iz baze preko unesenog clerk id-a
+    const korisnik = await pool.query(
+      'SELECT id FROM users WHERE clerk_id = $1', 
+      [user_id]
+    );
+
+    if (korisnik.rowCount === 0) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    const idKorisnika = korisnik.rows[0].id;
+
+    // unosenje komentara u bazu podataka
+    const result = await pool.query(
+      `INSERT INTO comments (post_id, user_id, content, created_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING id, content, created_at`,
+      [post_id, idKorisnika, content]
+    );
+
+    res.status(201).json({
+      message: "Komentar uspešno dodat.",
+      comment: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Greška pri dodavanju komentara:", err);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../dist", "index.html"));
 });
