@@ -13,6 +13,8 @@ import SavedPosts from "./pages/SavedPostsPage";
 import ReadingHistory from "./pages/ReadingHistoryPage";
 import BlogCreationPage from "./pages/BlogCreationPage";
 import PostOfTheWeek from "./components/PostOfTheWeek"; 
+import SinglePostPage from "./pages/SinglePostPage";
+
 
 const HomePage = () => (
 
@@ -141,6 +143,7 @@ const App = () => {
           <Route path="history" element={<ReadingHistory />} />
           <Route path="edit" element={<EditProfilePage />} />
         </Route>
+        <Route path="/posts/:slug" element={<SinglePostPage />} />
       </Route>
     </Routes>
   );
