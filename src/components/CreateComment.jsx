@@ -1,11 +1,15 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
 
-const CreateComment = ({ postId, userId, onCommentAdded }) => {
-
-
+const CreateComment = ({
+  postId,
+  onCommentAdded,
+  parentCommentId = null,
+  isReply = false,
+}) => {
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const { getToken } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,45 +18,63 @@ const CreateComment = ({ postId, userId, onCommentAdded }) => {
       return;
     }
 
-    const res = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ post_id: postId, user_id: userId, content }),
-    });
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
 
-    if (res.ok) {
+        body: JSON.stringify({
+          postId: postId,
+          content: content,
+          parentCommentId: parentCommentId,
+        }),
+      });
+
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Došlo je do greške.");
+      }
+
       setContent("");
       setError("");
       onCommentAdded(data.comment);
-
-      setSuccessMessage("Komentar uspešno dodat!");
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-
-    } else {
-      const errData = await res.json();
-      setError(errData.error || "Došlo je do greške.");
+    } catch (err) {
+      setError(err.message);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
+    <form onSubmit={handleSubmit} className="mt-2">
       <textarea
-        className="w-full border rounded p-2"
+        className={`w-full border rounded p-2 ${
+          isReply ? "text-sm h-20" : "h-24"
+        }`}
         rows="3"
-        placeholder="Kreirajte vaš komentar za objavu..."
+        placeholder={
+          isReply
+            ? "Napišite odgovor..."
+            : "Kreirajte vaš komentar za objavu..."
+        }
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
-      {error && <p className="text-red-700 bg-red-200 pt-2 pb-2 text-center">{error}</p>}
-      {successMessage && <p className="text-green-700 bg-green-200 pt-2 pb-2 text-center">{successMessage}</p>}
+      {error && (
+        <p className="text-red-700 bg-red-200 pt-1 pb-1 text-center text-sm">
+          {error}
+        </p>
+      )}
       <button
         type="submit"
-        className="mt-2 px-4 py-2 bg-orange-600 text-white rounded"
+        className={`mt-2 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors ${
+          isReply ? "text-sm py-1" : ""
+        }`}
       >
-        Objavi komentar
+        {isReply ? "Odgovori" : "Objavi komentar"}
       </button>
     </form>
   );
