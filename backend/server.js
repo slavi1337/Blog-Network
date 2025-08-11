@@ -3,7 +3,7 @@ const express = require("express");
 const { Webhook } = require("svix");
 const { Pool } = require("pg");
 const bodyParser = require("body-parser");
-const { ClerkExpressWithAuth } = require("@clerk/clerk-sdk-node");
+const { ClerkExpressWithAuth, clerkClient } = require("@clerk/clerk-sdk-node");
 const path = require("path");
 
 const app = express();
@@ -22,6 +22,15 @@ const pool = new Pool({
 
 app.use(express.json());
 
+const getInternalUserId = async (clerkId) => {
+  if (!clerkId) return null;
+  const result = await pool.query("SELECT id FROM users WHERE clerk_id = $1", [
+    clerkId,
+  ]);
+  return result.rows.length > 0 ? result.rows[0].id : null;
+};
+
+// --- API RUTA ZA KREIRANJE NOVOG POSTA ---
 app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
@@ -31,18 +40,14 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   if (!title || !content || !categoryId || !tags) {
     return res
       .status(400)
-      .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
+      .json({ error: "Naslov, sadržaj, kategorija i tagovi su obavezni." });
   }
 
   try {
-    const userResult = await pool.query(
-      "SELECT id FROM users WHERE clerk_id = $1",
-      [clerkId]
-    );
-    if (userResult.rowCount === 0) {
+    const authorId = await getInternalUserId(clerkId);
+    if (!authorId) {
       return res.status(404).json({ error: "Korisnik nije pronađen u bazi." });
     }
-    const authorId = userResult.rows[0].id;
 
     const slugBase = title
       .toLowerCase()
@@ -50,31 +55,24 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       .replace(/[^a-z0-9-]/g, "");
     const slug = `${slugBase}-${Date.now()}`;
 
+    const query = `
+      INSERT INTO posts (author_id, category_id, title, slug, content, status, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, 'published', NOW(), NOW())
+      RETURNING id, slug;
+    `;
+    const values = [authorId, categoryId, title, slug, content];
+    const newPost = await pool.query(query, values);
+    const newPostId = newPost.rows[0].id;
+
     const listaTagova = tags
       .split(/\s+/)
-      .map(t => t.replace(/^#/, ''))
-      .filter(t => t.length > 0);  
+      .map((t) => t.replace(/^#/, ""))
+      .filter((t) => t.length > 0);
 
-    const query = `
-            INSERT INTO posts (author_id, category_id, title, slug, content, status, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, 'published', NOW(), NOW())
-            RETURNING id, slug; -- Vrati ID i slug novog posta
-        `;
-    const values = [authorId, categoryId, title, slug, content];
-
-    const newPost = await pool.query(query, values);
-
-    res.status(201).json({
-      message: "Post uspešno kreiran!",
-      post: newPost.rows[0],
-    });
-
-    for (const tag of listaTagova) {
-      const {rows} = await pool.query(
-        "SELECT id FROM tags WHERE name = $1",
-        [tag]
-      );
-
+    for (const tagName of listaTagova) {
+      let { rows } = await pool.query("SELECT id FROM tags WHERE name = $1", [
+        tagName,
+      ]);
       let tagId;
 
       if (rows.length > 0) {
@@ -82,23 +80,210 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       } else {
         const rezultatInserta = await pool.query(
           "INSERT INTO tags (name) VALUES ($1) RETURNING id",
-          [tag]
+          [tagName]
         );
         tagId = rezultatInserta.rows[0].id;
       }
-      
-      const povezanTag = await pool.query(
-        "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
-        [newPost.rows[0].id, tagId]
-      )
 
+      await pool.query(
+        "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
+        [newPostId, tagId]
+      );
     }
+
+    res.status(201).json({
+      message: "Post uspešno kreiran!",
+      post: newPost.rows[0],
+    });
   } catch (error) {
     console.error("Greška pri kreiranju posta:", error);
     res.status(500).json({ error: "Greška na serveru." });
   }
 });
 
+// DOHVATANJE OBJAVE IZ BAZE
+app.get(
+  "/api/posts/:slug",
+  ClerkExpressWithAuth({ optional: true }),
+  async (req, res) => {
+    const { slug } = req.params;
+    const clerkId = req.auth.userId;
+
+    try {
+      const internalUserId = await getInternalUserId(clerkId);
+
+      const postQuery = `
+      SELECT 
+         p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
+         u.username AS author_username,
+         c.name AS category_name,
+         -- Ukupan broj glasova (like = +1, dislike = -1)
+         (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
+         -- Glas trenutno ulogovanog korisnika (ako postoji)
+         (SELECT vote_type FROM post_votes WHERE post_id = p.id AND user_id = $2) AS user_vote
+       FROM posts p
+       JOIN users u ON p.author_id = u.id
+       JOIN categories c ON p.category_id = c.id
+       WHERE p.slug = $1
+    `;
+
+      const postResult = await pool.query(postQuery, [slug, internalUserId]);
+
+      if (postResult.rowCount === 0) {
+        return res.status(404).json({ error: "Post nije pronađen." });
+      }
+
+      res.json(postResult.rows[0]);
+    } catch (error) {
+      console.error("Greška pri dohvatanju posta:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// --- glasanje ruta
+app.post(
+  "/api/posts/:postId/vote",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+    const { voteType } = req.body;
+
+    if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+    if (![1, -1].includes(voteType)) {
+      return res.status(400).json({ error: "Nevažeći tip glasa." });
+    }
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      const voteQuery = `
+            INSERT INTO post_votes (user_id, post_id, vote_type)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (user_id, post_id) DO UPDATE
+            SET vote_type = $3;
+        `;
+      await pool.query(voteQuery, [userId, postId, voteType]);
+
+      const scoreResult = await pool.query(
+        "SELECT COALESCE(SUM(vote_type), 0) AS new_score FROM post_votes WHERE post_id = $1",
+        [postId]
+      );
+
+      res.status(200).json({ newScore: scoreResult.rows[0].new_score });
+    } catch (error) {
+      console.error("Greška pri glasanju:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// --- API RUTA ZA UKLANJANJE GLASA ---
+app.delete(
+  "/api/posts/:postId/vote",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      await pool.query(
+        "DELETE FROM post_votes WHERE user_id = $1 AND post_id = $2",
+        [userId, postId]
+      );
+
+      const scoreResult = await pool.query(
+        "SELECT COALESCE(SUM(vote_type), 0) AS new_score FROM post_votes WHERE post_id = $1",
+        [postId]
+      );
+
+      res.status(200).json({ newScore: scoreResult.rows[0].new_score });
+    } catch (error) {
+      console.error("Greška pri uklanjanju glasa:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// OBJAVLJIVANJE KOMENTARA NA OBJAVU/kom
+app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { postId, content, parentCommentId } = req.body;
+
+  if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+  if (!postId || !content) {
+    return res.status(400).json({ error: "ID posta i sadržaj su obavezni." });
+  }
+
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    const query = `
+       INSERT INTO comments (post_id, user_id, content, parent_comment_id, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING id, post_id, user_id, content, parent_comment_id, created_at
+    `;
+    const values = [postId, userId, content, parentCommentId || null];
+    const result = await pool.query(query, values);
+    const newComment = result.rows[0];
+
+    const user = await clerkClient.users.getUser(clerkId);
+    const fullCommentData = {
+      ...newComment,
+      username: user.username,
+      profile_picture_url: user.imageUrl,
+    };
+
+    res.status(201).json({
+      message: "Komentar uspešno dodat.",
+      comment: fullCommentData,
+    });
+  } catch (err) {
+    console.error("Greška pri dodavanju komentara:", err);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+// ---DOHVATANJE SVIH KOMENTARA ZA OBJAVU ---
+app.get("/api/posts/:postId/comments", async (req, res) => {
+  const { postId } = req.params;
+  try {
+    const query = `
+      SELECT 
+        c.id,
+        c.post_id,
+        c.user_id,
+        c.parent_comment_id,
+        c.content,
+        c.created_at,
+        u.username,
+        u.profile_picture_url
+      FROM comments c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.post_id = $1
+      ORDER BY c.created_at ASC;
+    `;
+    const { rows } = await pool.query(query, [postId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju komentara:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+// DOHVATANJE KATEGORIJA IZ BAZE
 app.get("/api/categories", async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -111,57 +296,44 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
+// PRIKAZ VLASTITOG PROFILA
 app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
   if (!req.auth.userId) {
     return res.status(401).json({ error: "Niste autorizovani." });
   }
-
   const clerkId = req.auth.userId;
 
   try {
-    const profileQuery = `
-            SELECT
-                u.id,
-                u.username,
-                u.first_name,
-                u.last_name,
-                u.profile_picture_url,
-                u.created_at,
-                -- Broj objava korisnika
-                (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id) AS post_count,
-                -- Broj ljudi koje korisnik prati (following)
-                (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
-                -- Broj ljudi koji prate korisnika (followers)
-                (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count
-            FROM
-                users u
-            WHERE
-                u.clerk_id = $1;
-        `;
-
-    const { rows } = await pool.query(profileQuery, [clerkId]);
-
-    if (rows.length === 0) {
+    const internalUserId = await getInternalUserId(clerkId);
+    if (!internalUserId) {
       return res
         .status(404)
         .json({ error: "Korisnik nije pronađen u našoj bazi." });
     }
 
-    const postsQuery = `
-            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at 
-            FROM posts p
-            JOIN users u ON p.author_id = u.id
-            WHERE u.clerk_id = $1
-            ORDER BY p.created_at DESC;
-        `;
+    const profileQuery = `
+      SELECT
+          u.id, u.username, u.first_name, u.last_name, u.profile_picture_url, u.created_at,
+          (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id) AS post_count,
+          (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
+          (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count
+      FROM users u
+      WHERE u.id = $1;
+    `;
+    const { rows } = await pool.query(profileQuery, [internalUserId]);
 
-    const postsResult = await pool.query(postsQuery, [clerkId]);
+    const postsQuery = `
+      SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at 
+      FROM posts p
+      WHERE p.author_id = $1
+      ORDER BY p.created_at DESC;
+    `;
+    const postsResult = await pool.query(postsQuery, [internalUserId]);
 
     const profileData = {
       ...rows[0],
       posts: postsResult.rows,
     };
-
     res.status(200).json(profileData);
   } catch (error) {
     console.error("Greška pri dohvatanju profila:", error);
@@ -169,20 +341,21 @@ app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+// --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
 
   try {
     const query = `
-            SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
-            FROM saved_posts sp
-            JOIN posts p ON sp.post_id = p.id
-            JOIN users u_reader ON sp.user_id = u_reader.id
-            JOIN users u_author ON p.author_id = u_author.id
-            WHERE u_reader.clerk_id = $1
-            ORDER BY sp.saved_at DESC;
-        `;
+      SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
+      FROM saved_posts sp
+      JOIN posts p ON sp.post_id = p.id
+      JOIN users u_reader ON sp.user_id = u_reader.id
+      JOIN users u_author ON p.author_id = u_author.id
+      WHERE u_reader.clerk_id = $1
+      ORDER BY sp.saved_at DESC;
+    `;
     const { rows } = await pool.query(query, [clerkId]);
     res.status(200).json(rows);
   } catch (error) {
@@ -191,20 +364,21 @@ app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+// --- API RUTA ZA ISTORIJU ČITANJA ---
 app.get("/api/posts/history", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
 
   try {
     const query = `
-            SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
-            FROM reading_history rh
-            JOIN posts p ON rh.post_id = p.id
-            JOIN users u_reader ON rh.user_id = u_reader.id
-            JOIN users u_author ON p.author_id = u_author.id
-            WHERE u_reader.clerk_id = $1
-            ORDER BY rh.read_at DESC;
-        `;
+      SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
+      FROM reading_history rh
+      JOIN posts p ON rh.post_id = p.id
+      JOIN users u_reader ON rh.user_id = u_reader.id
+      JOIN users u_author ON p.author_id = u_author.id
+      WHERE u_reader.clerk_id = $1
+      ORDER BY rh.read_at DESC;
+    `;
     const { rows } = await pool.query(query, [clerkId]);
     res.status(200).json(rows);
   } catch (error) {
@@ -215,6 +389,7 @@ app.get("/api/posts/history", ClerkExpressWithAuth(), async (req, res) => {
 
 app.use(express.static(path.join(__dirname, "../dist")));
 
+// Endpoint za webhook
 app.post(
   "/api/webhooks/clerk",
   bodyParser.raw({ type: "application/json" }),
@@ -264,9 +439,7 @@ app.post(
         username,
         image_url,
       } = data;
-
       const email = email_addresses[0]?.email_address;
-
       if (!email) {
         console.error("Korisnik nema email adresu.");
         return res
@@ -275,14 +448,14 @@ app.post(
       }
 
       try {
-        const dbUsername = username || email.split("@")[0];
-
+        const dbUsername =
+          username || email.split("@")[0] + Math.floor(Math.random() * 1000);
         console.log(`Pokušavam da upišem korisnika: ${dbUsername}`);
 
         const query = `
         INSERT INTO users (clerk_id, username, email, first_name, last_name, role, profile_picture_url)
         VALUES ($1, $2, $3, $4, $5, 'standard', $6)
-        ON CONFLICT (email) DO NOTHING
+        ON CONFLICT (clerk_id) DO NOTHING
         RETURNING id;`;
 
         const values = [
@@ -293,7 +466,6 @@ app.post(
           last_name,
           image_url,
         ];
-
         const result = await pool.query(query, values);
 
         if (result.rowCount > 0) {
@@ -302,10 +474,9 @@ app.post(
           );
         } else {
           console.log(
-            `Korisnik sa emailom ${email} već postoji u bazi, preskače se.`
+            `Korisnik sa clerk_id ${id} već postoji u bazi, preskače se.`
           );
         }
-
         res.status(201).send("Webhook uspešno obrađen.");
       } catch (dbErr) {
         console.error("Database error:", dbErr);
@@ -319,75 +490,6 @@ app.post(
     }
   }
 );
-
-app.get("/api/posts/:slug", async (req, res) => {
-
-  const {slug} = req.params;
-
-  try {
-    const postResult = await pool.query(
-      `SELECT 
-         p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
-         u.username AS author_username,
-         c.name AS category_name
-       FROM posts p
-       JOIN users u ON p.author_id = u.id
-       JOIN categories c ON p.category_id = c.id
-       WHERE p.slug = $1`,
-      [slug]
-    );
-
-    if (postResult.rowCount === 0) {
-      return res.status(404).json({ error: "Post nije pronađen." });
-    }
-
-    res.json(postResult.rows[0]);
-  } catch (error) {
-    console.error("Greška pri dohvatanju posta:", error);
-    res.status(500).json({ error: "Greška na serveru." });
-  }
-});
-
-// OBJAVLJIVANJE KOMENTARA NA OBJAVU
-
-app.post("/api/comments", async (req, res) => {
-  const { post_id, user_id, content } = req.body;
-
-  if (!post_id || !user_id || !content) {
-    return res.status(400).json({ error: "Sva polja su obavezna." });
-  }
-
-  try {
-
-    // pronalazenje id-a korisnika iz baze preko unesenog clerk id-a
-    const korisnik = await pool.query(
-      'SELECT id FROM users WHERE clerk_id = $1', 
-      [user_id]
-    );
-
-    if (korisnik.rowCount === 0) {
-      return res.status(404).json({ error: "Korisnik nije pronađen." });
-    }
-
-    const idKorisnika = korisnik.rows[0].id;
-
-    // unosenje komentara u bazu podataka
-    const result = await pool.query(
-      `INSERT INTO comments (post_id, user_id, content, created_at)
-       VALUES ($1, $2, $3, NOW())
-       RETURNING id, content, created_at`,
-      [post_id, idKorisnika, content]
-    );
-
-    res.status(201).json({
-      message: "Komentar uspešno dodat.",
-      comment: result.rows[0],
-    });
-  } catch (err) {
-    console.error("Greška pri dodavanju komentara:", err);
-    res.status(500).json({ error: "Greška na serveru." });
-  }
-});
 
 app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../dist", "index.html"));
