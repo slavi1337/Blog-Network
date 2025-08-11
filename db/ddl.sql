@@ -191,6 +191,14 @@ CREATE TABLE featured_post (
     CONSTRAINT fk_featured_post_id FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
 );
 
+CREATE TABLE censored_words (
+    id SERIAL PRIMARY KEY,
+    word VARCHAR(100) NOT NULL UNIQUE,
+    added_by_admin_id INT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_added_by_admin FOREIGN KEY(added_by_admin_id) REFERENCES admins(id) ON DELETE SET NULL
+);
+
 CREATE INDEX idx_posts_author_id ON posts(author_id);
 CREATE INDEX idx_posts_slug ON posts(slug);
 CREATE INDEX idx_posts_category_id ON posts(category_id);
