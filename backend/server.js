@@ -387,6 +387,65 @@ app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+// API RUTA ZA SAVE POSTA
+app.post(
+  "/api/posts/:postId/save",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      // ON CONFLICT DO NOTHING osigurava da ne moze save isti post 2 put
+      const saveQuery = `
+            INSERT INTO saved_posts (user_id, post_id, saved_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (user_id, post_id) DO NOTHING;
+        `;
+      await pool.query(saveQuery, [userId, postId]);
+
+      res.status(201).json({ message: "Post je sačuvan." });
+    } catch (error) {
+      console.error("Greška pri čuvanju posta:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// RUTA ZA UKLANJANJE SAČUVANOG POSTA
+app.delete(
+  "/api/posts/:postId/save",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      await pool.query(
+        "DELETE FROM saved_posts WHERE user_id = $1 AND post_id = $2",
+        [userId, postId]
+      );
+
+      res.status(200).json({ message: "Post je uklonjen iz sačuvanih." });
+    } catch (error) {
+      console.error("Greška pri uklanjanju sačuvanog posta:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // --- API RUTA ZA ISTORIJU ČITANJA ---
 app.get("/api/posts/history", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
