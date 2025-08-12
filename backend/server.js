@@ -576,6 +576,70 @@ app.delete(
   }
 );
 
+// BLOKIRAJ KORISNIKA
+app.post(
+  "/api/users/:userId/block",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const blockerClerkId = req.auth.userId;
+    const { userId: blockedId } = req.params;
+
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const blockerId = await getInternalUserId(blockerClerkId);
+      if (!blockerId || blockerId == blockedId) {
+        return res.status(400).json({ error: "Nevažeća operacija." });
+      }
+
+      await client.query(
+        "INSERT INTO blocked_users (blocker_id, blocked_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [blockerId, blockedId]
+      );
+
+      await client.query(
+        "DELETE FROM followers WHERE (follower_id = $1 AND followed_id = $2) OR (follower_id = $2 AND followed_id = $1)",
+        [blockerId, blockedId]
+      );
+
+      await client.query("COMMIT");
+      res.status(201).json({ message: "Korisnik blokiran i otpraćen." });
+    } catch (error) {
+      console.error("Greška pri blokiranju korisnika:", error);
+      await client.query("ROLLBACK");
+      res.status(500).json({ error: "Greška na serveru." });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ODBLOKIRAJ KORISNIKA
+app.delete(
+  "/api/users/:userId/block",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const blockerClerkId = req.auth.userId;
+    const { userId: blockedId } = req.params;
+
+    try {
+      const blockerId = await getInternalUserId(blockerClerkId);
+      if (!blockerId)
+        return res.status(400).json({ error: "Nevažeća operacija." });
+
+      await pool.query(
+        "DELETE FROM blocked_users WHERE blocker_id = $1 AND blocked_id = $2",
+        [blockerId, blockedId]
+      );
+      res.status(200).json({ message: "Korisnik odblokiran." });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // API RUTA ZA SAVE POSTA
 app.post(
   "/api/posts/:postId/save",
