@@ -528,6 +528,54 @@ app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+// zaprati korisnika
+app.post(
+  "/api/users/:userId/follow",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const followerClerkId = req.auth.userId;
+    const { userId: followedId } = req.params;
+
+    try {
+      const followerId = await getInternalUserId(followerClerkId);
+      if (!followerId || followerId == followedId) {
+        return res.status(400).json({ error: "Nevažeća operacija." });
+      }
+      await pool.query(
+        "INSERT INTO followers (follower_id, followed_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [followerId, followedId]
+      );
+      res.status(201).json({ message: "Korisnik zapraćen." });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// OTPRATI KORISNIKA
+app.delete(
+  "/api/users/:userId/follow",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const followerClerkId = req.auth.userId;
+    const { userId: followedId } = req.params;
+
+    try {
+      const followerId = await getInternalUserId(followerClerkId);
+      if (!followerId)
+        return res.status(400).json({ error: "Nevažeća operacija." });
+
+      await pool.query(
+        "DELETE FROM followers WHERE follower_id = $1 AND followed_id = $2",
+        [followerId, followedId]
+      );
+      res.status(200).json({ message: "Korisnik otpraćen." });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // API RUTA ZA SAVE POSTA
 app.post(
   "/api/posts/:postId/save",
