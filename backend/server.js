@@ -102,40 +102,63 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
 });
 
 // DOHVATANJE OBJAVE IZ BAZE
+app.get("/api/public/posts/:slug", async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const postQuery = `
+          SELECT 
+             p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
+             u.username AS author_username,
+             c.name AS category_name,
+             (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
+           FROM posts p
+           JOIN users u ON p.author_id = u.id
+           JOIN categories c ON p.category_id = c.id
+           WHERE p.slug = $1 AND p.status = 'published'
+        `;
+
+    const postResult = await pool.query(postQuery, [slug]);
+
+    if (postResult.rowCount === 0) {
+      return res.status(404).json({ error: "Post nije pronađen." });
+    }
+
+    res.json(postResult.rows[0]);
+  } catch (error) {
+    console.error("Greška pri dohvatanju javnog posta:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.get(
-  "/api/posts/:slug",
-  ClerkExpressWithAuth({ optional: true }),
+  "/api/posts/:postId/status",
+  ClerkExpressWithAuth(),
   async (req, res) => {
-    const { slug } = req.params;
     const clerkId = req.auth.userId;
+    const { postId } = req.params;
 
     try {
       const internalUserId = await getInternalUserId(clerkId);
-
-      const postQuery = `
-      SELECT 
-         p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
-         u.username AS author_username,
-         c.name AS category_name,
-         -- Ukupan broj glasova (like = +1, dislike = -1)
-         (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
-         -- Glas trenutno ulogovanog korisnika (ako postoji)
-         (SELECT vote_type FROM post_votes WHERE post_id = p.id AND user_id = $2) AS user_vote
-       FROM posts p
-       JOIN users u ON p.author_id = u.id
-       JOIN categories c ON p.category_id = c.id
-       WHERE p.slug = $1
-    `;
-
-      const postResult = await pool.query(postQuery, [slug, internalUserId]);
-
-      if (postResult.rowCount === 0) {
-        return res.status(404).json({ error: "Post nije pronađen." });
+      if (!internalUserId) {
+        return res
+          .status(404)
+          .json({ error: "Korisnik nije pronađen u bazi." });
       }
 
-      res.json(postResult.rows[0]);
+      const statusQuery = `
+            SELECT 
+                (SELECT vote_type FROM post_votes WHERE post_id = $1 AND user_id = $2) AS user_vote,
+                (SELECT EXISTS (SELECT 1 FROM saved_posts WHERE post_id = $1 AND user_id = $2)) AS is_saved
+        `;
+
+      const statusResult = await pool.query(statusQuery, [
+        postId,
+        internalUserId,
+      ]);
+
+      res.json(statusResult.rows[0]);
     } catch (error) {
-      console.error("Greška pri dohvatanju posta:", error);
+      console.error("Greška pri dohvatanju statusa posta:", error);
       res.status(500).json({ error: "Greška na serveru." });
     }
   }
