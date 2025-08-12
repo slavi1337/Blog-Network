@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
-
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 const MicrophoneIcon = ({ isListening }) => (
@@ -22,14 +21,17 @@ const MicrophoneIcon = ({ isListening }) => (
 );
 
 const BlogCreationPage = () => {
+  const { slug } = useParams();
+  const isEditMode = !!slug;
+
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [tags, setTags] = useState("");
   const [content, setContent] = useState("");
+  const [postId, setPostId] = useState(null);
 
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -50,15 +52,34 @@ const BlogCreationPage = () => {
     if (transcript && quillRef.current) {
       const editor = quillRef.current.getEditor();
       const range = editor.getSelection();
-
       const position = range ? range.index : editor.getLength();
-
       const textToInsert = (position > 0 ? " " : "") + transcript;
-
       editor.insertText(position, textToInsert, "user");
       editor.setSelection(position + textToInsert.length);
     }
   }, [transcript]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchPostForEdit = async () => {
+        try {
+          const response = await fetch(`/api/public/posts/${slug}`);
+          if (!response.ok)
+            throw new Error("Nije moguće učitati podatke za izmenu.");
+          const data = await response.json();
+
+          setTitle(data.title);
+          setContent(data.content);
+          setCategoryId(data.category_id);
+          setTags(data.tags || "");
+          setPostId(data.id);
+        } catch (err) {
+          setError(err.message);
+        }
+      };
+      fetchPostForEdit();
+    }
+  }, [isEditMode, slug]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -68,18 +89,17 @@ const BlogCreationPage = () => {
         if (!response.ok) throw new Error("Greška pri učitavanju kategorija.");
         const data = await response.json();
         setCategories(data);
-        if (data.length > 0) {
+        if (data.length > 0 && !isEditMode) {
           setCategoryId(data[0].id);
         }
       } catch (err) {
-        console.error("Nije moguće učitati kategorije", err);
         setError("Nije moguće učitati kategorije. Molimo osvežite stranicu.");
       } finally {
         setLoadingCategories(false);
       }
     };
     fetchCategories();
-  }, []);
+  }, [isEditMode]);
 
   const modules = {
     toolbar: [
@@ -98,29 +118,54 @@ const BlogCreationPage = () => {
       setError("Naslov, sadržaj i kategorija su obavezni.");
       return;
     }
+
     setIsSubmitting(true);
     setError(null);
+
+    const postData = {
+      title,
+      categoryId: Number(categoryId),
+      content,
+      tags,
+    };
+
     try {
       const token = await getToken();
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          categoryId: Number(categoryId),
-          content,
-          tags,
-        }),
-      });
+      let response;
+
+      if (isEditMode) {
+        response = await fetch(`/api/posts/${postId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(postData),
+        });
+      } else {
+        response = await fetch("/api/posts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(postData),
+        });
+      }
+
       const responseData = await response.json();
+
       if (!response.ok) {
         throw new Error(responseData.error || "Došlo je do nepoznate greške.");
       }
-      alert("Blog je uspešno objavljen!");
-      navigate(`/posts/${responseData.post.slug}`);
+
+      if (isEditMode) {
+        alert("Objava je uspešno ažurirana!");
+        navigate(`/posts/${slug}`);
+      } else {
+        alert("Blog je uspešno objavljen!");
+        navigate(`/posts/${responseData.post.slug}`);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -132,7 +177,7 @@ const BlogCreationPage = () => {
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md">
         <h1 className="text-3xl font-bold mb-6 border-b pb-4">
-          Kreirajte Novi Blog
+          {isEditMode ? "Uredi Objavu" : "Kreirajte Novi Blog"}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -177,7 +222,7 @@ const BlogCreationPage = () => {
               required
             >
               {loadingCategories ? (
-                <option>Učitavanje kategorija...</option>
+                <option>Učitavanje...</option>
               ) : (
                 categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
@@ -193,16 +238,15 @@ const BlogCreationPage = () => {
               htmlFor="tags"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Tagovi
+              Tagovi (razdvojeni razmakom)
             </label>
             <input
               type="text"
               id="tags"
-              placeholder="info coffee brewing"
+              placeholder="info kafa priprema"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-              required
             />
           </div>
 
@@ -250,10 +294,16 @@ const BlogCreationPage = () => {
           <div className="text-right pt-8">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (isEditMode && !postId)}
               className="py-2 px-8 rounded-lg bg-orange-500 text-white font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-orange-600"
             >
-              {isSubmitting ? "Objavljivanje..." : "Objavi"}
+              {isSubmitting
+                ? isEditMode
+                  ? "Ažuriranje..."
+                  : "Objavljivanje..."
+                : isEditMode
+                ? "Ažuriraj"
+                : "Objavi"}
             </button>
           </div>
         </form>
