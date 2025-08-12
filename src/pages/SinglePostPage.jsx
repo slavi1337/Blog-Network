@@ -53,9 +53,26 @@ const BookmarkIcon = ({ saved }) => (
   </svg>
 );
 
+const EditIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-6 w-6"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"
+    />
+  </svg>
+);
+
 const SinglePostPage = () => {
   const { slug } = useParams();
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
   const { getToken } = useAuth();
 
   const [post, setPost] = useState(null);
@@ -220,15 +237,27 @@ const SinglePostPage = () => {
             <span>{new Date(post.created_at).toLocaleDateString()}</span>
           </div>
         </div>
-        {isSignedIn && (
-          <button
-            onClick={handleSaveToggle}
-            className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
-            title={isSaved ? "Ukloni iz sačuvanih" : "Sačuvaj za kasnije"}
-          >
-            <BookmarkIcon saved={isSaved} />
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {isSignedIn && (
+            <button
+              onClick={handleSaveToggle}
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
+              title={isSaved ? "Ukloni iz sačuvanih" : "Sačuvaj za kasnije"}
+            >
+              <BookmarkIcon saved={isSaved} />
+            </button>
+          )}
+
+          {isSignedIn && user?.username === post?.author_username && (
+            <Link
+              to={`/edit-post/${post.slug}`}
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
+              title="Uredi objavu"
+            >
+              <EditIcon />
+            </Link>
+          )}
+        </div>
       </div>
 
       <div
