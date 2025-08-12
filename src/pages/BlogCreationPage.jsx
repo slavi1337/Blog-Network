@@ -1,9 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
-
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
+
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+
+const MicrophoneIcon = ({ isListening }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={`h-5 w-5 ${isListening ? "text-red-500 animate-pulse" : ""}`}
+    viewBox="0 0 20 20"
+    fill="currentColor"
+  >
+    <path
+      fillRule="evenodd"
+      d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8h-1a6 6 0 11-12 0H3a7.001 7.001 0 006 6.93V17H7v1h6v-1h-2v-2.07z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
 
 const BlogCreationPage = () => {
   const [title, setTitle] = useState("");
@@ -20,16 +36,38 @@ const BlogCreationPage = () => {
   const navigate = useNavigate();
   const { getToken } = useAuth();
 
+  const quillRef = useRef(null);
+  const {
+    isListening,
+    transcript,
+    startListening,
+    stopListening,
+    error: speechError,
+    hasRecognitionSupport,
+  } = useSpeechRecognition();
+
+  useEffect(() => {
+    if (transcript && quillRef.current) {
+      const editor = quillRef.current.getEditor();
+      const range = editor.getSelection();
+
+      const position = range ? range.index : editor.getLength();
+
+      const textToInsert = (position > 0 ? " " : "") + transcript;
+
+      editor.insertText(position, textToInsert, "user");
+      editor.setSelection(position + textToInsert.length);
+    }
+  }, [transcript]);
+
   useEffect(() => {
     const fetchCategories = async () => {
       setLoadingCategories(true);
       try {
         const response = await fetch("/api/categories");
         if (!response.ok) throw new Error("Greška pri učitavanju kategorija.");
-
         const data = await response.json();
         setCategories(data);
-
         if (data.length > 0) {
           setCategoryId(data[0].id);
         }
@@ -42,6 +80,7 @@ const BlogCreationPage = () => {
     };
     fetchCategories();
   }, []);
+
   const modules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -59,10 +98,8 @@ const BlogCreationPage = () => {
       setError("Naslov, sadržaj i kategorija su obavezni.");
       return;
     }
-
     setIsSubmitting(true);
     setError(null);
-
     try {
       const token = await getToken();
       const response = await fetch("/api/posts", {
@@ -78,13 +115,10 @@ const BlogCreationPage = () => {
           tags,
         }),
       });
-
       const responseData = await response.json();
-
       if (!response.ok) {
         throw new Error(responseData.error || "Došlo je do nepoznate greške.");
       }
-
       alert("Blog je uspešno objavljen!");
       navigate(`/posts/${responseData.post.slug}`);
     } catch (err) {
@@ -173,11 +207,37 @@ const BlogCreationPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sadržaj
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Sadržaj
+              </label>
+              {hasRecognitionSupport && (
+                <button
+                  type="button"
+                  onClick={isListening ? stopListening : startListening}
+                  className="flex items-center gap-2 px-3 py-1 text-sm rounded-md border border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  disabled={!hasRecognitionSupport}
+                >
+                  <MicrophoneIcon isListening={isListening} />
+                  {isListening ? "Slušam..." : "Diktiraj"}
+                </button>
+              )}
+            </div>
+
+            {speechError && (
+              <p className="text-xs text-red-500 mb-1">
+                Greška pri diktiranju: {speechError}
+              </p>
+            )}
+            {!hasRecognitionSupport && (
+              <p className="text-xs text-yellow-600 mb-1">
+                Diktiranje nije podržano u vašem pretraživaču.
+              </p>
+            )}
+
             <div className="bg-white border border-gray-300 rounded-md">
               <ReactQuill
+                ref={quillRef}
                 theme="snow"
                 value={content}
                 onChange={setContent}
