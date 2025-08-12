@@ -135,6 +135,42 @@ app.get("/api/public/posts/:slug", async (req, res) => {
   }
 });
 
+app.get("/api/public/posts", async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = 4;
+  const offset = (page - 1) * limit;
+
+  try {
+    const postsQuery = `
+      SELECT 
+        p.id, p.title, p.slug, p.content, p.created_at,
+        u.username AS author_username,
+        c.name AS category_name,
+        (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
+      FROM posts p
+      JOIN users u ON p.author_id = u.id
+      JOIN categories c ON p.category_id = c.id
+      WHERE p.status = 'published'
+      ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    const { rows } = await pool.query(postsQuery, [limit, offset]);
+      const countResult = await pool.query(
+      "SELECT COUNT(*) FROM posts WHERE status = 'published'"
+    );
+    const total = parseInt(countResult.rows[0].count);
+    const hasMore = offset + limit < total;
+
+    res.json({ posts: rows, hasMore });
+  }
+
+  catch (error) {
+    console.error("Greška pri dohvatanju postova:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   const { postId } = req.params;

@@ -1,5 +1,8 @@
 import { Routes, Route, Link } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { useEffect, useState } from "react";
+import InfiniteScroll from "react-infinite-scroll-component";
+import PostList from "./components/PostList.jsx";
 
 import MainLayout from "./layouts/MainLayout";
 
@@ -16,15 +19,40 @@ import PostOfTheWeek from "./components/PostOfTheWeek";
 import SinglePostPage from "./pages/SinglePostPage";
 import AboutPage from "./pages/AboutPage";
 
-const HomePage = () => (
-  <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
-    <div className="flex flex-row justify-between border-b-2 border-gray-300">
-      <div className="">
-        <h1 className="text-4xl font-bold">Dobrodošli na Blog Network!</h1>
-        <p className="mt-4">
-          Ovo je početna stranica. Izaberite opciju iz navigacije ili započnite
-          sa kreiranjem!
-        </p>
+const HomePage = () => {
+
+  const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchPosts = async () => {
+  try {
+    const res = await fetch(`/api/public/posts?page=${page}`);
+    const data = await res.json();
+
+    setPosts((prev) => [...prev, ...data.posts]);
+    setHasMore(data.hasMore);
+    setPage((prev) => prev + 1);
+
+    } catch (error) {
+      console.error("Greška prilikom dohvatanja postova:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  return (
+      
+    <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
+      <div className="flex flex-row justify-between border-b-2 border-gray-300">
+        <div className="">
+          <h1 className="text-4xl font-bold">Dobrodošli na Blog Network!</h1>
+          <p className="mt-4">
+            Ovo je početna stranica. Izaberite opciju iz navigacije ili započnite sa
+            kreiranjem!
+          </p>
       </div>
 
       <div className="text-center md:text-right mb-12">
@@ -47,94 +75,39 @@ const HomePage = () => (
     </div>
 
     <div className="mt-8 text-center">
-      <h1 className="text-3xl font-bold text-orange-600 mb-6">
-        Objava sedmice!
-      </h1>
-      <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
-        <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8" />
-        <div className="text-center w-3/4">
-          <div className="mb-4">
-            <h1 className="font-bold text-xl">Naslov bloga</h1>
-            <span className="text-gray-500 mr-4">ime korisnika</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">vrijeme objave</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">kategorija</span>
-          </div>
-          <p className="">
-            Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus
-            quasi vitae tempore velit provident. Nemo eligendi deserunt eaque
-            vero, cupiditate similique, a ea repudiandae neque amet nisi eius
-            consectetur doloribus!
-          </p>
+        <h1 className="text-3xl font-bold text-orange-600 mb-6">Objava sedmice!</h1>
+        <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
+            <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8"/>
+            <div className="text-center w-3/4">
+                <div className="mb-4">
+                    <h1 className="font-bold text-xl">Naslov bloga</h1>
+                    <span className="text-gray-500 mr-4">ime korisnika</span>
+                    <span className="text-gray-500 mr-4">-</span>
+                    <span className="text-gray-500 mr-4">vrijeme objave</span>
+                    <span className="text-gray-500 mr-4">-</span>
+                    <span className="text-gray-500 mr-4">kategorija</span>
+                </div>
+                <p className="">Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus quasi vitae tempore velit provident. Nemo eligendi deserunt eaque vero, cupiditate similique, a ea repudiandae neque amet nisi eius consectetur doloribus!</p>
+            </div>
         </div>
-      </div>
-    </div>
-
-    <div className="mt-10">
-      <h2 className="text-2xl font-bold border-t-2 border-b-2 border-gray-300 pb-2 pt-2">
-        Najnovije objave
-      </h2>
-      <div className="flex flex-row border-b-2 border-gray-300 pb-4 mt-4">
-        <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8" />
-        <div className="text-center w-3/4">
-          <div className="mb-4">
-            <h1 className="font-bold text-xl">Naslov bloga</h1>
-            <span className="text-gray-500 mr-4">ime korisnika</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">vrijeme objave</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">kategorija</span>
-          </div>
-          <p className="">
-            Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus
-            quasi vitae tempore velit provident. Nemo eligendi deserunt eaque
-            vero, cupiditate similique, a ea repudiandae neque amet nisi eius
-            consectetur doloribus!
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-row border-b-2 border-gray-300 pb-4 mt-4">
-        <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8" />
-        <div className="text-center w-3/4">
-          <div className="mb-4">
-            <h1 className="font-bold text-xl">Naslov bloga</h1>
-            <span className="text-gray-500 mr-4">ime korisnika</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">vrijeme objave</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">kategorija</span>
-          </div>
-          <p className="">
-            Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus
-            quasi vitae tempore velit provident. Nemo eligendi deserunt eaque
-            vero, cupiditate similique, a ea repudiandae neque amet nisi eius
-            consectetur doloribus!
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-row border-b-2 border-gray-300 pb-4 mt-4">
-        <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8" />
-        <div className="text-center w-3/4">
-          <div className="mb-4">
-            <h1 className="font-bold text-xl">Naslov bloga</h1>
-            <span className="text-gray-500 mr-4">ime korisnika</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">vrijeme objave</span>
-            <span className="text-gray-500 mr-4">-</span>
-            <span className="text-gray-500 mr-4">kategorija</span>
-          </div>
-          <p className="">
-            Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus
-            quasi vitae tempore velit provident. Nemo eligendi deserunt eaque
-            vero, cupiditate similique, a ea repudiandae neque amet nisi eius
-            consectetur doloribus!
-          </p>
-        </div>
-      </div>
+        
+        <InfiniteScroll
+          dataLength={posts.length}
+          next={fetchPosts}
+          hasMore={hasMore}
+          loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
+          endMessage={
+            <p className="text-center text-gray-400 mt-4">
+              <b>Učitali ste sve objave za date parametre.</b>
+            </p>
+          }
+        >
+        <PostList posts={posts} />
+      </InfiniteScroll>
     </div>
   </div>
-);
+
+)};
 
 const EditProfilePage = () => (
   <div>
