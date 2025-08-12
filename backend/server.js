@@ -107,14 +107,19 @@ app.get("/api/public/posts/:slug", async (req, res) => {
   try {
     const postQuery = `
           SELECT 
-             p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
-             u.username AS author_username,
-             c.name AS category_name,
-             (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
-           FROM posts p
-           JOIN users u ON p.author_id = u.id
-           JOIN categories c ON p.category_id = c.id
-           WHERE p.slug = $1 AND p.status = 'published'
+          p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
+          u.username AS author_username,
+          c.name AS category_name,
+          c.id AS category_id, -- Vraćamo i ID kategorije za lakše popunjavanje forme
+          (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
+          STRING_AGG(t.name, ' ') AS tags
+          FROM posts p
+          JOIN users u ON p.author_id = u.id
+          JOIN categories c ON p.category_id = c.id
+          LEFT JOIN post_tags pt ON p.id = pt.post_id
+          LEFT JOIN tags t ON pt.tag_id = t.id
+          WHERE p.slug = $1 AND p.status = 'published'
+          GROUP BY p.id, u.id, c.id;
         `;
 
     const postResult = await pool.query(postQuery, [slug]);
@@ -127,6 +132,83 @@ app.get("/api/public/posts/:slug", async (req, res) => {
   } catch (error) {
     console.error("Greška pri dohvatanju javnog posta:", error);
     res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { postId } = req.params;
+  const { title, categoryId, content, tags } = req.body;
+
+  if (!title || !content || !categoryId) {
+    return res
+      .status(400)
+      .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const internalUserId = await getInternalUserId(clerkId);
+    if (!internalUserId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    const postResult = await client.query(
+      "SELECT author_id FROM posts WHERE id = $1",
+      [postId]
+    );
+    if (postResult.rowCount === 0) {
+      return res.status(404).json({ error: "Post nije pronađen." });
+    }
+    if (postResult.rows[0].author_id !== internalUserId) {
+      return res
+        .status(403)
+        .json({ error: "Nemate dozvolu da menjate ovaj post." });
+    }
+
+    await client.query(
+      `UPDATE posts SET title = $1, category_id = $2, content = $3, updated_at = NOW() WHERE id = $4`,
+      [title, categoryId, content, postId]
+    );
+
+    await client.query("DELETE FROM post_tags WHERE post_id = $1", [postId]);
+
+    const listaTagova = (tags || "")
+      .split(/\s+/)
+      .map((t) => t.replace(/^#/, ""))
+      .filter((t) => t.length > 0);
+
+    for (const tagName of listaTagova) {
+      let { rows } = await client.query("SELECT id FROM tags WHERE name = $1", [
+        tagName,
+      ]);
+      let tagId;
+      if (rows.length > 0) {
+        tagId = rows[0].id;
+      } else {
+        const rezultatInserta = await client.query(
+          "INSERT INTO tags (name) VALUES ($1) RETURNING id",
+          [tagName]
+        );
+        tagId = rezultatInserta.rows[0].id;
+      }
+      await client.query(
+        "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
+        [postId, tagId]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.status(200).json({ message: "Post je uspešno ažuriran." });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Greška pri ažuriranju posta:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  } finally {
+    client.release();
   }
 });
 
@@ -318,6 +400,65 @@ app.get("/api/categories", async (req, res) => {
     res.status(500).json({ error: "Greška na serveru." });
   }
 });
+
+app.get(
+  "/api/profiles/:username",
+  ClerkExpressWithAuth({ optional: true }),
+  async (req, res) => {
+    const { username } = req.params;
+    const viewerClerkId = req.auth.userId; // ID onog ko gleda profil (može biti null)
+
+    try {
+      const viewerId = await getInternalUserId(viewerClerkId);
+
+      // 1. Pronađi korisnika po korisničkom imenu i dohvati njegove podatke i statuse
+      const profileQuery = `
+            SELECT
+                u.id, u.username, u.first_name, u.last_name, u.profile_picture_url, u.created_at,
+                (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id AND p.status = 'published') AS post_count,
+                (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
+                (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count,
+                -- Novi deo: Provera da li ga ulogovani korisnik prati
+                EXISTS(SELECT 1 FROM followers WHERE follower_id = $2 AND followed_id = u.id) as is_followed_by_viewer,
+                -- Novi deo: Provera da li ga je ulogovani korisnik blokirao
+                EXISTS(SELECT 1 FROM blocked_users WHERE blocker_id = $2 AND blocked_id = u.id) as is_blocked_by_viewer
+            FROM users u
+            WHERE u.username = $1;
+        `;
+      const profileResult = await pool.query(profileQuery, [
+        username,
+        viewerId,
+      ]);
+
+      if (profileResult.rowCount === 0) {
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      }
+
+      const profileData = profileResult.rows[0];
+      const userId = profileData.id;
+
+      // 2. Dohvati sve objave tog korisnika
+      const postsQuery = `
+            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at, u.username as author_username
+            FROM posts p
+            JOIN users u ON p.author_id = u.id
+            WHERE p.author_id = $1 AND p.status = 'published'
+            ORDER BY p.created_at DESC;
+        `;
+      const postsResult = await pool.query(postsQuery, [userId]);
+
+      const fullProfile = {
+        ...profileData,
+        posts: postsResult.rows,
+      };
+
+      res.status(200).json(fullProfile);
+    } catch (error) {
+      console.error("Greška pri dohvatanju profila:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
 
 // PRIKAZ VLASTITOG PROFILA
 app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
