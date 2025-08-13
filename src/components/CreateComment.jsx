@@ -58,7 +58,7 @@ const CreateComment = ({
         placeholder={
           isReply
             ? "Napišite odgovor..."
-            : "Kreirajte vaš komentar za objavu..."
+            : "Kreirajte Vaš komentar za objavu..."
         }
         value={content}
         onChange={(e) => setContent(e.target.value)}
