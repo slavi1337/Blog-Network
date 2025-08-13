@@ -152,6 +152,7 @@ const SinglePostPage = () => {
     } else if (isLoaded && !isSignedIn) {
       setUserVote(null);
       setIsSaved(false);
+      setCanManageContent(false);
       setCanDeletePost(false);
     }
   }, [post, isSignedIn, isLoaded, getToken, user?.username]);
