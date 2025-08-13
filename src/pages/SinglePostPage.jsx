@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import CreateComment from "../components/CreateComment";
 import CommentSection from "../components/CommentSection";
@@ -70,10 +70,28 @@ const EditIcon = () => (
   </svg>
 );
 
+const DeleteIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-6 w-6"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+    />
+  </svg>
+);
+
 const SinglePostPage = () => {
   const { slug } = useParams();
   const { isSignedIn, isLoaded, user } = useUser();
   const { getToken } = useAuth();
+  const navigate = useNavigate();
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +100,8 @@ const SinglePostPage = () => {
   const [userVote, setUserVote] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [comments, setComments] = useState([]);
+
+  const [canDeletePost, setCanDeletePost] = useState(false);
 
   useEffect(() => {
     const fetchPublicPostData = async () => {
@@ -119,6 +139,8 @@ const SinglePostPage = () => {
             statusData.user_vote ? parseInt(statusData.user_vote, 10) : null
           );
           setIsSaved(statusData.is_saved || false);
+          const isAuthor = user?.username === post.author_username;
+          setCanDeletePost(isAuthor);
         } catch (err) {
           console.error("Nije moguće dohvatiti status korisnika:", err);
         }
@@ -127,8 +149,9 @@ const SinglePostPage = () => {
     } else if (isLoaded && !isSignedIn) {
       setUserVote(null);
       setIsSaved(false);
+      setCanDeletePost(false);
     }
-  }, [post, isSignedIn, isLoaded, getToken]);
+  }, [post, isSignedIn, isLoaded, getToken, user?.username]);
 
   useEffect(() => {
     if (post?.id) {
@@ -203,6 +226,35 @@ const SinglePostPage = () => {
     }
   };
 
+  const handleDeletePost = async () => {
+    if (
+      !window.confirm("Da li ste sigurni da želite trajno obrisati ovu objavu?")
+    )
+      return;
+
+    try {
+      const token = await getToken();
+
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: "DELETE",
+
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+
+        throw new Error(errData.error || "Greška pri brisanju objave.");
+      }
+
+      alert("Objava uspješno obrisana.");
+
+      navigate("/");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   if (loading)
     return <div className="text-center p-10 font-bold">Učitavanje...</div>;
   if (error)
@@ -256,6 +308,15 @@ const SinglePostPage = () => {
             >
               <EditIcon />
             </Link>
+          )}
+          {isSignedIn && canDeletePost && (
+            <button
+              onClick={handleDeletePost}
+              className="p-2 rounded-full text-red-600 hover:bg-red-100"
+              title="Obriši objavu"
+            >
+              <DeleteIcon />
+            </button>
           )}
         </div>
       </div>
