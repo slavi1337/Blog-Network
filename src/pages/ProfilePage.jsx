@@ -223,6 +223,13 @@ const ProfilePage = () => {
 
             {isOwnProfile && (
               <>
+                <Link to="followers" className={getFinalLinkClass("followers")}>
+                  Pratioci
+                </Link>
+
+                <Link to="following" className={getFinalLinkClass("following")}>
+                  Pratim
+                </Link>
                 <Link to="saved" className={getFinalLinkClass("saved")}>
                   Sačuvani članci
                 </Link>
