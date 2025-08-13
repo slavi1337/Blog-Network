@@ -195,7 +195,7 @@ const SinglePostPage = () => {
       });
       if (!response.ok) {
         setIsSaved(!newSavedState);
-        console.error("Greška pri promeni statusa čuvanja.");
+        console.error("Greška pri promjeni statusa čuvanja.");
       }
     } catch (err) {
       setIsSaved(!newSavedState);
