@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom";
 
 const BellIcon = ({ hasUnread }) => (
   <div className="relative">
@@ -26,8 +27,10 @@ const BellIcon = ({ hasUnread }) => (
 const NotificationBell = () => {
   const { getToken } = useAuth();
   const { isSignedIn } = useUser();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isMarking, setIsMarking] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!isSignedIn) return;
@@ -53,6 +56,49 @@ const NotificationBell = () => {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const handleOpen = () => setIsOpen((prev) => !prev);
+
+  const handleMarkAllAsRead = async () => {
+    setIsMarking(true);
+    try {
+      const token = await getToken();
+      const response = await fetch("/api/notifications/mark-as-read", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        await fetchNotifications();
+      } else {
+        console.error("Server error on mark all as read");
+      }
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+    } finally {
+      setIsMarking(false);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    setIsOpen(false);
+    navigate(`/posts/${notification.post_slug}`);
+
+    if (!notification.is_read) {
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notification.id ? { ...n, is_read: true } : n
+        )
+      );
+      try {
+        const token = await getToken();
+        await fetch(`/api/notifications/${notification.id}/read`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        console.error("Failed to mark notification as read", err);
+      }
+    }
+  };
 
   const renderNotificationText = (notif) => {
     const actor = (
@@ -85,13 +131,23 @@ const NotificationBell = () => {
         <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-lg shadow-xl z-20 border">
           <div className="flex justify-between items-center p-4 border-b">
             <span className="font-bold">Notifikacije</span>
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAllAsRead}
+                disabled={isMarking}
+                className="text-xs text-orange-600 hover:underline font-semibold disabled:text-gray-400"
+              >
+                {isMarking ? "Obeležavanje..." : "Označi sve kao pročitano"}
+              </button>
+            )}
           </div>
           <div className="max-h-80 overflow-y-auto">
             {notifications.length > 0 ? (
               notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-3 text-sm border-b ${
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`p-3 text-sm border-b cursor-pointer ${
                     !notif.is_read ? "bg-orange-50" : "hover:bg-gray-100"
                   }`}
                 >
