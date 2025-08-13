@@ -112,13 +112,6 @@ const HomePage = () => {
 
 )};
 
-const EditProfilePage = () => (
-  <div>
-    <h2 className="text-2xl font-bold mb-6">Uređivanje Profila</h2>
-    <p>Ova funkcionalnost će biti implementirana uskoro.</p>
-  </div>
-);
-
 const App = () => {
   return (
     <Routes>
