@@ -142,6 +142,7 @@ const SinglePostPage = () => {
           setIsSaved(statusData.is_saved || false);
           const isAuthor = user?.username === post.author_username;
           const isGlobalMod = statusData.viewer_role === "moderator";
+          const isPersonalMod = statusData.viewer_is_personal_moderator;
           setCanManageContent(isAuthor);
           setCanDeletePost(isAuthor || isGlobalMod);
         } catch (err) {
