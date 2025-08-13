@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 
 const BellIcon = ({ hasUnread }) => (
   <div className="relative">
@@ -23,16 +24,62 @@ const BellIcon = ({ hasUnread }) => (
 );
 
 const NotificationBell = () => {
+  const { getToken } = useAuth();
+  const { isSignedIn } = useUser();
+  const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifications(data);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  }, [getToken, isSignedIn]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const handleOpen = () => setIsOpen((prev) => !prev);
 
-  const hasUnread = false;
+  const renderNotificationText = (notif) => {
+    const actor = (
+      <span className="font-bold">{notif.actor_username || "Neko"}</span>
+    );
+    const postTitle = (
+      <span className="font-semibold italic">"{notif.post_title}"</span>
+    );
+    if (notif.type === "new_post_from_followed")
+      return (
+        <>
+          {actor} je objavio/la novi post: {postTitle}
+        </>
+      );
+    if (notif.type === "reply_to_comment")
+      return (
+        <>
+          {actor} je odgovorio/la na vaš komentar na postu {postTitle}
+        </>
+      );
+    return "Nova notifikacija.";
+  };
 
   return (
     <div className="relative">
       <button onClick={handleOpen}>
-        <BellIcon hasUnread={hasUnread} />
+        <BellIcon hasUnread={unreadCount > 0} />
       </button>
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-lg shadow-xl z-20 border">
@@ -40,9 +87,25 @@ const NotificationBell = () => {
             <span className="font-bold">Notifikacije</span>
           </div>
           <div className="max-h-80 overflow-y-auto">
-            <p className="p-4 text-sm text-gray-500 text-center">
-              Nema notifikacija.
-            </p>
+            {notifications.length > 0 ? (
+              notifications.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-3 text-sm border-b ${
+                    !notif.is_read ? "bg-orange-50" : "hover:bg-gray-100"
+                  }`}
+                >
+                  <p>{renderNotificationText(notif)}</p>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {new Date(notif.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="p-4 text-sm text-gray-500 text-center">
+                Nemate nijednu notifikaciju.
+              </p>
+            )}
           </div>
           <div className="p-2 text-center border-t"></div>
         </div>
