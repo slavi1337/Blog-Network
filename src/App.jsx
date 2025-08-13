@@ -18,6 +18,9 @@ import BlogCreationPage from "./pages/BlogCreationPage";
 import PostOfTheWeek from "./components/PostOfTheWeek";
 import SinglePostPage from "./pages/SinglePostPage";
 import AboutPage from "./pages/AboutPage";
+import EditProfilePage from "./pages/EditProfilePage.jsx";
+import FollowingPage from "./pages/FollowingPage";
+import FollowersPage from "./pages/FollowersPage";
 
 const HomePage = () => {
 
@@ -136,6 +139,8 @@ const App = () => {
           <Route path="saved" element={<SavedPosts />} />
           <Route path="history" element={<ReadingHistory />} />
           <Route path="edit" element={<EditProfilePage />} />
+          <Route path="following" element={<FollowingPage />} />
+          <Route path="followers" element={<FollowersPage />} />
         </Route>
 
         <Route path="/posts/:slug" element={<SinglePostPage />} />
