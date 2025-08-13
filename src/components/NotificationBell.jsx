@@ -30,6 +30,7 @@ const NotificationBell = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
@@ -122,6 +123,10 @@ const NotificationBell = () => {
     return "Nova notifikacija.";
   };
 
+  const displayedNotifications = showAll
+    ? notifications
+    : notifications.filter((n) => !n.is_read);
+
   return (
     <div className="relative">
       <button onClick={handleOpen}>
@@ -142,8 +147,8 @@ const NotificationBell = () => {
             )}
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {notifications.length > 0 ? (
-              notifications.map((notif) => (
+            {displayedNotifications.length > 0 ? (
+              displayedNotifications.map((notif) => (
                 <div
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif)}
@@ -159,11 +164,20 @@ const NotificationBell = () => {
               ))
             ) : (
               <p className="p-4 text-sm text-gray-500 text-center">
-                Nemate nijednu notifikaciju.
+                {showAll
+                  ? "Nemate nijednu notifikaciju."
+                  : "Nemate nepročitanih notifikacija."}
               </p>
             )}
           </div>
-          <div className="p-2 text-center border-t"></div>
+          <div className="p-2 text-center border-t">
+            <button
+              onClick={() => setShowAll((prev) => !prev)}
+              className="text-xs text-gray-600 hover:underline font-semibold"
+            >
+              {showAll ? "Prikaži samo nepročitane" : "Prikaži sve"}
+            </button>
+          </div>
         </div>
       )}
     </div>
