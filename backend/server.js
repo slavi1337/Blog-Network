@@ -37,10 +37,10 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
 
   const { title, categoryId, content, tags } = req.body;
 
-  if (!title || !content || !categoryId || !tags) {
+  if (!title || !content || !categoryId) {
     return res
       .status(400)
-      .json({ error: "Naslov, sadržaj, kategorija i tagovi su obavezni." });
+      .json({ error: "Naslov, sadržaj, i kategorija su obavezni." });
   }
 
   try {
@@ -56,15 +56,16 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
     const slug = `${slugBase}-${Date.now()}`;
 
     const query = `
-      INSERT INTO posts (author_id, category_id, title, slug, content, status, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, 'published', NOW(), NOW())
+      INSERT INTO posts (author_id, category_id, title, slug, content, status)
+      VALUES ($1, $2, $3, $4, $5, 'published')
       RETURNING id, slug;
     `;
     const values = [authorId, categoryId, title, slug, content];
-    const newPost = await pool.query(query, values);
-    const newPostId = newPost.rows[0].id;
+    const newPostResult = await pool.query(query, values);
+    const newPost = newPostResult.rows[0];
+    const newPostId = newPost.id;
 
-    const listaTagova = tags
+    const listaTagova = (tags || "")
       .split(/\s+/)
       .map((t) => t.replace(/^#/, ""))
       .filter((t) => t.length > 0);
@@ -91,10 +92,32 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       );
     }
 
-    res.status(201).json({
-      message: "Post uspešno kreiran!",
-      post: newPost.rows[0],
-    });
+    res.status(201).json({ message: "Post uspešno kreiran!", post: newPost });
+
+    try {
+      const followersRes = await pool.query(
+        `SELECT follower_id FROM followers WHERE followed_id = $1 AND notifications_enabled = TRUE`,
+        [authorId]
+      );
+      if (followersRes.rowCount > 0) {
+        const followerIds = followersRes.rows.map((r) => r.follower_id);
+        const notificationParams = followerIds.flatMap((id) => [
+          id,
+          "new_post_from_followed",
+          newPost.id,
+        ]);
+        const valuePlaceholders = followerIds
+          .map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`)
+          .join(",");
+        const notificationQuery = `INSERT INTO notifications (recipient_id, type, related_entity_id) VALUES ${valuePlaceholders}`;
+        await pool.query(notificationQuery, notificationParams);
+      }
+    } catch (notificationError) {
+      console.error(
+        "Greška pri slanju notifikacija za novi post:",
+        notificationError
+      );
+    }
   } catch (error) {
     console.error("Greška pri kreiranju posta:", error);
     res.status(500).json({ error: "Greška na serveru." });
@@ -256,11 +279,27 @@ app.get(
     const { postId } = req.params;
 
     try {
-      const internalUserId = await getInternalUserId(clerkId);
-      if (!internalUserId) {
-        return res
-          .status(404)
-          .json({ error: "Korisnik nije pronađen u bazi." });
+      const viewerResult = await pool.query(
+        "SELECT id, role FROM users WHERE clerk_id = $1",
+        [clerkId]
+      );
+      if (viewerResult.rowCount === 0)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const viewer = viewerResult.rows[0];
+
+      const postAuthorResult = await pool.query(
+        "SELECT author_id FROM posts WHERE id = $1",
+        [postId]
+      );
+      const postAuthorId = postAuthorResult.rows[0]?.author_id;
+
+      let isPersonalModerator = false;
+      if (postAuthorId) {
+        const permissionResult = await pool.query(
+          "SELECT EXISTS (SELECT 1 FROM moderator_permissions WHERE blogger_id = $1 AND moderator_id = $2)",
+          [postAuthorId, viewer.id]
+        );
+        isPersonalModerator = permissionResult.rows[0].exists;
       }
 
       const statusQuery = `
@@ -269,18 +308,67 @@ app.get(
                 (SELECT EXISTS (SELECT 1 FROM saved_posts WHERE post_id = $1 AND user_id = $2)) AS is_saved
         `;
 
-      const statusResult = await pool.query(statusQuery, [
-        postId,
-        internalUserId,
-      ]);
-
-      res.json(statusResult.rows[0]);
+      res.json({
+        ...statusResult.rows[0],
+        viewer_role: viewer.role,
+        viewer_is_personal_moderator: isPersonalModerator,
+      });
     } catch (error) {
       console.error("Greška pri dohvatanju statusa posta:", error);
       res.status(500).json({ error: "Greška na serveru." });
     }
   }
 );
+
+app.get("/api/profile/following", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+    const { rows } = await pool.query(
+      `
+            SELECT u.id, u.username, u.first_name, u.last_name, u.profile_picture_url
+            FROM users u
+            JOIN followers f ON u.id = f.followed_id
+            WHERE f.follower_id = $1
+            ORDER BY u.username;
+        `,
+      [userId]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju liste praćenih:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.get("/api/profile/followers", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+    const { rows } = await pool.query(
+      `
+            SELECT u.id, u.username, u.first_name, u.last_name, u.profile_picture_url
+            FROM users u
+            JOIN followers f ON u.id = f.follower_id
+            WHERE f.followed_id = $1
+            ORDER BY u.username;
+        `,
+      [userId]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju liste pratilaca:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
 
 // --- glasanje ruta
 app.post(
@@ -372,9 +460,8 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
     }
 
     const query = `
-       INSERT INTO comments (post_id, user_id, content, parent_comment_id, created_at)
-       VALUES ($1, $2, $3, $4, NOW())
-       RETURNING id, post_id, user_id, content, parent_comment_id, created_at
+       INSERT INTO comments (post_id, user_id, content, parent_comment_id)
+       VALUES ($1, $2, $3, $4) RETURNING id, post_id, user_id, content, parent_comment_id, created_at
     `;
     const values = [postId, userId, content, parentCommentId || null];
     const result = await pool.query(query, values);
@@ -387,10 +474,34 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
       profile_picture_url: user.imageUrl,
     };
 
-    res.status(201).json({
-      message: "Komentar uspešno dodat.",
-      comment: fullCommentData,
-    });
+    res
+      .status(201)
+      .json({ message: "Komentar uspešno dodat.", comment: fullCommentData });
+
+      if (parentCommentId) {
+      try {
+        const parentCommentRes = await pool.query(
+          "SELECT user_id FROM comments WHERE id = $1",
+          [parentCommentId]
+        );
+        if (parentCommentRes.rowCount > 0) {
+          const parentAuthorId = parentCommentRes.rows[0].user_id;
+          if (parentAuthorId !== userId) {
+            // AŽURIRAN UPIT: Sada čuvamo i post_id i comment_id
+            await pool.query(
+              `INSERT INTO notifications (recipient_id, type, related_entity_id, secondary_entity_id) VALUES ($1, 'reply_to_comment', $2, $3)`,
+              [parentAuthorId, postId, parentCommentId]
+            );
+          }
+        }
+      } catch (notificationError) {
+        console.error(
+          "Greška pri slanju notifikacija za odgovor:",
+          notificationError
+        );
+      }
+    }
+    
   } catch (err) {
     console.error("Greška pri dodavanju komentara:", err);
     res.status(500).json({ error: "Greška na serveru." });
@@ -454,9 +565,7 @@ app.get(
                 (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id AND p.status = 'published') AS post_count,
                 (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
                 (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count,
-                -- Novi deo: Provera da li ga ulogovani korisnik prati
-                EXISTS(SELECT 1 FROM followers WHERE follower_id = $2 AND followed_id = u.id) as is_followed_by_viewer,
-                -- Novi deo: Provera da li ga je ulogovani korisnik blokirao
+                (SELECT row_to_json(f.*) FROM followers f WHERE f.follower_id = $2 AND f.followed_id = u.id) as follow_status,
                 EXISTS(SELECT 1 FROM blocked_users WHERE blocker_id = $2 AND blocked_id = u.id) as is_blocked_by_viewer
             FROM users u
             WHERE u.username = $1;
@@ -473,7 +582,11 @@ app.get(
       const profileData = profileResult.rows[0];
       const userId = profileData.id;
 
-      // 2. Dohvati sve objave tog korisnika
+      profileData.is_followed_by_viewer = !!profileData.follow_status;
+      profileData.notifications_enabled_for_viewer =
+      profileData.follow_status?.notifications_enabled || false;
+      delete profileData.follow_status;
+      
       const postsQuery = `
             SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at, u.username as author_username
             FROM posts p
