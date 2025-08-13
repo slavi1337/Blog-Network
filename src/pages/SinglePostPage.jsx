@@ -258,6 +258,31 @@ const SinglePostPage = () => {
     }
   };
 
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("Da li ste sigurni da želite obrisati ovaj komentar?"))
+      return;
+
+    try {
+      const token = await getToken();
+
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: "DELETE",
+
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+
+        throw new Error(errData.error || "Greška pri brisanju komentara.");
+      }
+
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   if (loading)
     return <div className="text-center p-10 font-bold">Učitavanje...</div>;
   if (error)
@@ -369,6 +394,7 @@ const SinglePostPage = () => {
           comments={comments}
           onCommentAdded={handleCommentAdded}
           canManage={canManageContent}
+          onDeleteComment={handleDeleteComment}
         />
 
         {isSignedIn ? (
