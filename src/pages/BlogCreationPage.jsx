@@ -160,7 +160,7 @@ const BlogCreationPage = () => {
       }
 
       if (isEditMode) {
-        alert("Objava je uspešno ažurirana!");
+        alert("Objava je uspješno ažurirana!");
         navigate(`/posts/${slug}`);
       } else {
         alert("Blog je uspešno objavljen!");
