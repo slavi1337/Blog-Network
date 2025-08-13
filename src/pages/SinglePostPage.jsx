@@ -140,7 +140,8 @@ const SinglePostPage = () => {
           );
           setIsSaved(statusData.is_saved || false);
           const isAuthor = user?.username === post.author_username;
-          setCanDeletePost(isAuthor);
+          const isGlobalMod = statusData.viewer_role === "moderator";
+          setCanDeletePost(isAuthor || isGlobalMod);
         } catch (err) {
           console.error("Nije moguće dohvatiti status korisnika:", err);
         }
