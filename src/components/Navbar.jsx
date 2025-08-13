@@ -109,6 +109,7 @@ const Navbar = () => {
         <NavLinks />
         <SignedIn>
           <div className="flex items-center gap-8">
+            <NotificationBell />
             <UserActions />
           </div>
         </SignedIn>
@@ -137,7 +138,11 @@ const Navbar = () => {
         >
           <NavLinks />
           <SignedIn>
-            <UserActions />
+            <div className="flex items-center gap-8">
+              <NotificationBell />
+
+              <UserActions />
+            </div>
           </SignedIn>
           <SignedOut>
             <Link to="/sign-in" onClick={() => setOpen(false)}>
