@@ -65,7 +65,7 @@ const BlogCreationPage = () => {
         try {
           const response = await fetch(`/api/public/posts/${slug}`);
           if (!response.ok)
-            throw new Error("Nije moguće učitati podatke za izmenu.");
+            throw new Error("Nije moguće učitati podatke za izmjenu.");
           const data = await response.json();
 
           setTitle(data.title);
