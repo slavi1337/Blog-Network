@@ -6,15 +6,15 @@ const AboutPage = () => { return (
     </h1>
     <div className="prose lg:prose-lg max-w-none text-gray-700 space-y-4">
       <p>
-        Dobrodosli na <strong>Blog Network</strong>, platformu stvorenu za sve
-        ljubitelje pisanja i deljenja znanja. Naša misija je da pružimo
+        Dobrodošli na <strong>Blog Network</strong>, platformu stvorenu za sve
+        ljubitelje pisanja i dijeljenja znanja. Naša misija je da pružimo
         jednostavan, elegantan i moćan alat koji omogućava autorima da se
         fokusiraju na ono što je najvažnije - kreiranje kvalitetnog sadržaja.
       </p>
       <p>
-        Verujemo da svako ima priču vrednu deljenja, bilo da se radi o stručnom
+        Vjerujemo da svako ima priču vrijednu dijeljenja, bilo da se radi o stručnom
         znanju iz vaše profesije, ličnim iskustvima, kreativnom pisanju ili
-        uputstvima za neki hobi. Blog Network je mesto gde te priče oživljavaju.
+        uputstvima za neki hobi. Blog Network je mjesto gdje te priče oživljavaju.
       </p>
       <h2 className="text-2xl font-bold mt-6">Naše Vrednosti</h2>
       <ul className="list-disc pl-5 space-y-2">
@@ -36,7 +36,7 @@ const AboutPage = () => { return (
         </li>
       </ul>
       <p className="mt-6">
-        Hvala vam što ste deo naše zajednice. Srećno pisanje!
+        Hvala vam što ste dio naše zajednice. Srećno pisanje!
       </p>
     </div>
   </div>
