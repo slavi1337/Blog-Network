@@ -58,6 +58,8 @@ const ProfilePage = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
   useEffect(() => {
     if (isLoaded) {
       const fetchProfileData = async () => {
@@ -82,6 +84,7 @@ const ProfilePage = () => {
           setProfileData(data);
           setIsFollowing(data.is_followed_by_viewer);
           setIsBlocked(data.is_blocked_by_viewer);
+          setNotificationsEnabled(data.notifications_enabled_for_viewer);
         } catch (err) {
           setError(err.message);
         } finally {
@@ -184,6 +187,32 @@ const ProfilePage = () => {
     return inactiveClass;
   };
 
+  const handleNotificationToggle = async () => {
+    if (!isSignedIn || !profileData) return;
+
+    const newState = !notificationsEnabled;
+
+    setNotificationsEnabled(newState);
+
+    try {
+      const token = await getToken();
+
+      await fetch(`/api/users/${profileData.id}/follow/notifications`, {
+        method: "PUT",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Authorization: `Bearer ${token}`,
+        },
+
+        body: JSON.stringify({ enabled: newState }),
+      });
+    } catch (err) {
+      setNotificationsEnabled(!newState);
+    }
+  };
+
   if (loading || !isLoaded)
     return (
       <div className="text-center p-10 font-semibold">
@@ -238,6 +267,19 @@ const ProfilePage = () => {
                   }`}
                 >
                   {isFollowing ? "Otprati" : "Zaprati"}
+                </button>
+              )}
+              {isFollowing && !isBlocked && (
+                <button
+                  onClick={handleNotificationToggle}
+                  title={
+                    notificationsEnabled
+                      ? "Isključi notifikacije"
+                      : "Uključi notifikacije"
+                  }
+                  className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  {notificationsEnabled ? <BellOnIcon /> : <BellOffIcon />}
                 </button>
               )}
               <button
