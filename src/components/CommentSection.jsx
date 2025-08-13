@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import CreateComment from "./CreateComment";
 
-const Comment = ({ comment, onCommentAdded }) => {
+const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const { isSignedIn } = useAuth();
 
@@ -26,6 +26,14 @@ const Comment = ({ comment, onCommentAdded }) => {
               className="font-semibold hover:text-orange-600"
             >
               {showReplyForm ? "Otkaži" : "Odgovori"}
+            </button>
+          )}
+          {canManage && (
+            <button
+              onClick={() => onDeleteComment(comment.id)}
+              className="font-semibold text-red-500 hover:text-red-700"
+            >
+              Obriši
             </button>
           )}
         </div>
@@ -52,6 +60,8 @@ const Comment = ({ comment, onCommentAdded }) => {
                 key={childComment.id}
                 comment={childComment}
                 onCommentAdded={onCommentAdded}
+                canManage={canManage}
+                onDeleteComment={onDeleteComment}
               />
             ))}
         </div>
@@ -60,7 +70,13 @@ const Comment = ({ comment, onCommentAdded }) => {
   );
 };
 
-const CommentSection = ({ postId, comments, onCommentAdded }) => {
+const CommentSection = ({
+  postId,
+  comments,
+  onCommentAdded,
+  canManage,
+  onDeleteComment,
+}) => {
   // Funkcija koja gradi stablo od ravne liste komentara
   const buildCommentTree = (commentList) => {
     const commentMap = {};
@@ -95,6 +111,8 @@ const CommentSection = ({ postId, comments, onCommentAdded }) => {
             key={comment.id}
             comment={comment}
             onCommentAdded={onCommentAdded}
+            canManage={canManage}
+            onDeleteComment={onDeleteComment}
           />
         ))}
       </div>
