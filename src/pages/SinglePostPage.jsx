@@ -101,6 +101,7 @@ const SinglePostPage = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [comments, setComments] = useState([]);
 
+  const [canManageContent, setCanManageContent] = useState(false);
   const [canDeletePost, setCanDeletePost] = useState(false);
 
   useEffect(() => {
@@ -141,6 +142,7 @@ const SinglePostPage = () => {
           setIsSaved(statusData.is_saved || false);
           const isAuthor = user?.username === post.author_username;
           const isGlobalMod = statusData.viewer_role === "moderator";
+          setCanManageContent(isAuthor);
           setCanDeletePost(isAuthor || isGlobalMod);
         } catch (err) {
           console.error("Nije moguće dohvatiti status korisnika:", err);
@@ -366,6 +368,7 @@ const SinglePostPage = () => {
           postId={post.id}
           comments={comments}
           onCommentAdded={handleCommentAdded}
+          canManage={canManageContent}
         />
 
         {isSignedIn ? (
