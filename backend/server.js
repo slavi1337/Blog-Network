@@ -763,6 +763,26 @@ app.get("/api/tags", async (req, res) => {
   }
 });
 
+app.get("/api/profile/interests", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT tag_id FROM user_interested_tags WHERE user_id = $1`,
+      [userId]
+    );
+    
+    res.status(200).json(rows.map((row) => row.tag_id));
+  } catch (error) {
+    console.error("Greška pri dohvatanju interesovanja:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
