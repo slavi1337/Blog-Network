@@ -935,6 +935,43 @@ app.delete(
   }
 );
 
+app.delete("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { postId } = req.params;
+
+  try {
+    const userResult = await pool.query(
+      "SELECT id, role FROM users WHERE clerk_id = $1",
+      [clerkId]
+    );
+    if (userResult.rowCount === 0)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    const deleter = userResult.rows[0];
+
+    const postResult = await pool.query(
+      "SELECT author_id FROM posts WHERE id = $1",
+      [postId]
+    );
+    if (postResult.rowCount === 0)
+      return res.status(404).json({ error: "Post nije pronađen." });
+    const post = postResult.rows[0];
+
+    if (deleter.role !== "moderator" && post.author_id !== deleter.id) {
+      return res
+        .status(403)
+        .json({ error: "Nemate dozvolu za brisanje ovog posta." });
+    }
+
+    await pool.query("DELETE FROM posts WHERE id = $1", [postId]);
+
+    res.status(200).json({ message: "Objava je uspešno obrisana." });
+  } catch (error) {
+    console.error("Greška pri brisanju objave:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
