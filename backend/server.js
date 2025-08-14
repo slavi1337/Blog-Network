@@ -124,6 +124,60 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.get("/api/public/search", async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = 5;
+  const offset = (page - 1) * limit;
+  const search = (req.query.search || "").trim();
+
+  const searchActive = search.length > 0;
+
+  try {
+    const searchClause = `
+      AND (p.title ILIKE '%' || $1 || '%' OR p.content ILIKE '%' || $1 || '%')
+    `;
+
+    const postsQuery = `
+      SELECT 
+        p.id, p.title, p.slug, p.content, p.created_at,
+        u.username AS author_username,
+        c.name AS category_name,
+        (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
+      FROM posts p
+      JOIN users u ON p.author_id = u.id
+      JOIN categories c ON p.category_id = c.id
+      WHERE p.status = 'published'
+      ${searchActive ? searchClause : ""}
+      ORDER BY p.created_at DESC
+      LIMIT $${searchActive ? 2 : 1} OFFSET $${searchActive ? 3 : 2}
+    `;
+
+    const queryParams = searchActive
+      ? [search, limit, offset]
+      : [limit, offset];
+
+    const { rows } = await pool.query(postsQuery, queryParams);
+
+    const countQuery = `
+      SELECT COUNT(*) FROM posts p
+      WHERE p.status = 'published'
+      ${searchActive ? searchClause : ""}
+    `;
+
+    const countParams = searchActive ? [search] : [];
+
+    const countResult = await pool.query(countQuery, countParams);
+
+    const total = parseInt(countResult.rows[0].count);
+    const hasMore = offset + limit < total;
+
+    res.json({ posts: rows, hasMore });
+  } catch (error) {
+    console.error("Greška pri dohvatanju postova:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 // DOHVATANJE OBJAVE IZ BAZE
 app.get("/api/public/posts/:slug", async (req, res) => {
   const { slug } = req.params;
@@ -179,16 +233,14 @@ app.get("/api/public/posts", async (req, res) => {
     `;
 
     const { rows } = await pool.query(postsQuery, [limit, offset]);
-      const countResult = await pool.query(
+    const countResult = await pool.query(
       "SELECT COUNT(*) FROM posts WHERE status = 'published'"
     );
     const total = parseInt(countResult.rows[0].count);
     const hasMore = offset + limit < total;
 
     res.json({ posts: rows, hasMore });
-  }
-
-  catch (error) {
+  } catch (error) {
     console.error("Greška pri dohvatanju postova:", error);
     res.status(500).json({ error: "Greška na serveru." });
   }
@@ -478,7 +530,7 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
       .status(201)
       .json({ message: "Komentar uspešno dodat.", comment: fullCommentData });
 
-      if (parentCommentId) {
+    if (parentCommentId) {
       try {
         const parentCommentRes = await pool.query(
           "SELECT user_id FROM comments WHERE id = $1",
@@ -500,7 +552,6 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
         );
       }
     }
-    
   } catch (err) {
     console.error("Greška pri dodavanju komentara:", err);
     res.status(500).json({ error: "Greška na serveru." });
@@ -681,9 +732,9 @@ app.get(
 
       profileData.is_followed_by_viewer = !!profileData.follow_status;
       profileData.notifications_enabled_for_viewer =
-      profileData.follow_status?.notifications_enabled || false;
+        profileData.follow_status?.notifications_enabled || false;
       delete profileData.follow_status;
-      
+
       const postsQuery = `
             SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at, u.username as author_username
             FROM posts p
