@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, useSearchParams } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
@@ -26,23 +26,31 @@ const HomePage = () => {
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
-  const fetchPosts = async () => {
-    try {
-      const res = await fetch(`/api/public/posts?page=${page}`);
-      const data = await res.json();
-
+const fetchPosts = async (pageToFetch) => {
+  try {
+    const res = await fetch(`/api/public/search?search=${encodeURIComponent(searchQuery)}&page=${pageToFetch}`);
+    const data = await res.json();
+    if (pageToFetch === 1) {
+      setPosts(data.posts);
+    } else {
       setPosts((prev) => [...prev, ...data.posts]);
-      setHasMore(data.hasMore);
-      setPage((prev) => prev + 1);
-    } catch (error) {
-      console.error("Greška prilikom dohvatanja postova:", error);
     }
-  };
+    setHasMore(data.hasMore);
+    setPage(pageToFetch + 1);
+  } catch (error) {
+    console.error("Greška prilikom dohvatanja postova:", error);
+  }
+};
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+useEffect(() => {
+  setPage(1);
+  setPosts([]);
+  fetchPosts(1);
+}, [searchQuery]);
+
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
@@ -100,7 +108,7 @@ const HomePage = () => {
 
         <InfiniteScroll
           dataLength={posts.length}
-          next={fetchPosts}
+          next={() => fetchPosts(page)}
           hasMore={hasMore}
           loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
           endMessage={
