@@ -23,20 +23,18 @@ import FollowingPage from "./pages/FollowingPage";
 import FollowersPage from "./pages/FollowersPage";
 
 const HomePage = () => {
-
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
   const fetchPosts = async () => {
-  try {
-    const res = await fetch(`/api/public/posts?page=${page}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`/api/public/posts?page=${page}`);
+      const data = await res.json();
 
-    setPosts((prev) => [...prev, ...data.posts]);
-    setHasMore(data.hasMore);
-    setPage((prev) => prev + 1);
-
+      setPosts((prev) => [...prev, ...data.posts]);
+      setHasMore(data.hasMore);
+      setPage((prev) => prev + 1);
     } catch (error) {
       console.error("Greška prilikom dohvatanja postova:", error);
     }
@@ -47,53 +45,59 @@ const HomePage = () => {
   }, []);
 
   return (
-      
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
       <div className="flex flex-row justify-between border-b-2 border-gray-300">
         <div className="">
           <h1 className="text-4xl font-bold">Dobrodošli na Blog Network!</h1>
           <p className="mt-4">
-            Ovo je početna stranica. Izaberite opciju iz navigacije ili započnite sa
-            kreiranjem!
+            Ovo je početna stranica. Izaberite opciju iz navigacije ili
+            započnite sa kreiranjem!
           </p>
-      </div>
-
-      <div className="text-center md:text-right mb-12">
-        <SignedIn>
-          <Link to="/create-blog">
-            <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-              Kreiraj Novu Objavu
-            </button>
-          </Link>
-        </SignedIn>
-
-        <SignedOut>
-          <Link to="/sign-up">
-            <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-              Pridruži se i Kreiraj Svoj Blog!
-            </button>
-          </Link>
-        </SignedOut>
-      </div>
-    </div>
-
-    <div className="mt-8 text-center">
-        <h1 className="text-3xl font-bold text-orange-600 mb-6">Objava sedmice!</h1>
-        <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
-            <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8"/>
-            <div className="text-center w-3/4">
-                <div className="mb-4">
-                    <h1 className="font-bold text-xl">Naslov bloga</h1>
-                    <span className="text-gray-500 mr-4">ime korisnika</span>
-                    <span className="text-gray-500 mr-4">-</span>
-                    <span className="text-gray-500 mr-4">vrijeme objave</span>
-                    <span className="text-gray-500 mr-4">-</span>
-                    <span className="text-gray-500 mr-4">kategorija</span>
-                </div>
-                <p className="">Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus quasi vitae tempore velit provident. Nemo eligendi deserunt eaque vero, cupiditate similique, a ea repudiandae neque amet nisi eius consectetur doloribus!</p>
-            </div>
         </div>
-        
+
+        <div className="text-center md:text-right mb-12">
+          <SignedIn>
+            <Link to="/create-blog">
+              <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                Kreiraj Novu Objavu
+              </button>
+            </Link>
+          </SignedIn>
+
+          <SignedOut>
+            <Link to="/sign-up">
+              <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                Pridruži se i Kreiraj Svoj Blog!
+              </button>
+            </Link>
+          </SignedOut>
+        </div>
+      </div>
+
+      <div className="mt-8 text-center">
+        <h1 className="text-3xl font-bold text-orange-600 mb-6">
+          Objava sedmice!
+        </h1>
+        <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
+          <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8" />
+          <div className="text-center w-3/4">
+            <div className="mb-4">
+              <h1 className="font-bold text-xl">Naslov bloga</h1>
+              <span className="text-gray-500 mr-4">ime korisnika</span>
+              <span className="text-gray-500 mr-4">-</span>
+              <span className="text-gray-500 mr-4">vrijeme objave</span>
+              <span className="text-gray-500 mr-4">-</span>
+              <span className="text-gray-500 mr-4">kategorija</span>
+            </div>
+            <p className="">
+              Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+              Accusamus quasi vitae tempore velit provident. Nemo eligendi
+              deserunt eaque vero, cupiditate similique, a ea repudiandae neque
+              amet nisi eius consectetur doloribus!
+            </p>
+          </div>
+        </div>
+
         <InfiniteScroll
           dataLength={posts.length}
           next={fetchPosts}
@@ -105,12 +109,12 @@ const HomePage = () => {
             </p>
           }
         >
-        <PostList posts={posts} />
-      </InfiniteScroll>
+          <PostList posts={posts} />
+        </InfiniteScroll>
+      </div>
     </div>
-  </div>
-
-)};
+  );
+};
 
 const App = () => {
   return (
