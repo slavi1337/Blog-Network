@@ -751,6 +751,18 @@ app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.get("/api/tags", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, name FROM tags ORDER BY name ASC"
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju tagova:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
