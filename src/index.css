@@ -13,27 +13,28 @@
   .theme-blog-network {
     --color-primary: #f97316;
     --color-primary-accent: #c2410c;
-    --color-background: #ffffff;
+    --color-background: #e2e2e2;
     --color-textcolor: #000000;
   }
 
   .theme-etfbl {
-    --color-primary: #1d4ed8;
-    --color-primary-accent: #1e3a8a;
-    --color-background: #ffffff;
-    --color-textcolor: #000000;
-  }
+  --color-primary: #0d6efd;
+  --color-primary-accent: #0d6efd;
+  --color-background: #f8f9fa;
+  --color-textcolor: #000000;
+}
 
   .theme-dark {
-    --color-primary: #340034;
-    --color-primary-accent: #561256;
-    --color-background: #000000;
-    --color-textcolor: #ffffff;
-  }
+  --color-primary: #000000;
+  --color-primary-accent: #000000;
+  --color-background: #121212;
+  --color-textcolor: #32CD32;
+ }
 }
 
 body {
-  background-color: #e6e6e6;
+  background-color: var(--color-background);
+  color: var(--color-textcolor); 
   width: 100vw;
   overflow-x: hidden;
   font-family: "Montserrta", sans-serif;
