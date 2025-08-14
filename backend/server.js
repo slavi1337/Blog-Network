@@ -849,6 +849,61 @@ app.get("/api/profile/moderators", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.post(
+  "/api/profile/moderators",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const bloggerClerkId = req.auth.userId;
+    const { username: moderatorUsername } = req.body;
+
+    if (!moderatorUsername) {
+      return res
+        .status(400)
+        .json({ error: "Korisničko ime moderatora je obavezno." });
+    }
+
+    try {
+      const bloggerId = await getInternalUserId(bloggerClerkId);
+      if (!bloggerId)
+        return res.status(404).json({ error: "Bloger nije pronađen." });
+
+      const moderatorResult = await pool.query(
+        "SELECT id, username FROM users WHERE username = $1",
+        [moderatorUsername]
+      );
+
+      if (moderatorResult.rowCount === 0) {
+        return res.status(404).json({
+          error: `Korisnik sa imenom "${moderatorUsername}" nije pronađen.`,
+        });
+      }
+
+      const moderator = moderatorResult.rows[0];
+
+      if (moderator.id === bloggerId) {
+        return res
+          .status(400)
+          .json({ error: "Ne možete dodati sebe kao moderatora." });
+      }
+
+      await pool.query(
+        "INSERT INTO moderator_permissions (blogger_id, moderator_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [bloggerId, moderator.id]
+      );
+
+      const newModeratorData = await pool.query(
+        "SELECT id, username, profile_picture_url FROM users WHERE id = $1",
+        [moderator.id]
+      );
+
+      res.status(201).json(newModeratorData.rows[0]);
+    } catch (error) {
+      console.error("Greška pri dodavanju moderatora:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
