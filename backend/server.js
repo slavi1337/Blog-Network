@@ -487,7 +487,6 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
         if (parentCommentRes.rowCount > 0) {
           const parentAuthorId = parentCommentRes.rows[0].user_id;
           if (parentAuthorId !== userId) {
-            // AŽURIRAN UPIT: Sada čuvamo i post_id i comment_id
             await pool.query(
               `INSERT INTO notifications (recipient_id, type, related_entity_id, secondary_entity_id) VALUES ($1, 'reply_to_comment', $2, $3)`,
               [parentAuthorId, postId, parentCommentId]
@@ -507,6 +506,42 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
     res.status(500).json({ error: "Greška na serveru." });
   }
 });
+
+app.get("/api/notifications", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+    const { rows } = await pool.query(
+      `
+            SELECT 
+                n.id, n.type, n.is_read, n.created_at,
+                p.slug AS post_slug,
+                p.title AS post_title,
+                -- Korisnik koji je izazvao notifikaciju (autor posta ili komentara)
+                CASE
+                    WHEN n.type = 'new_post_from_followed' THEN (SELECT u.username FROM posts po JOIN users u ON po.author_id = u.id WHERE po.id = n.related_entity_id)
+                    WHEN n.type = 'reply_to_comment' THEN (SELECT u.username FROM comments co JOIN users u ON co.user_id = u.id WHERE co.parent_comment_id = n.secondary_entity_id ORDER BY co.created_at DESC LIMIT 1)
+                END AS actor_username
+            FROM notifications n
+            JOIN posts p ON n.related_entity_id = p.id
+            WHERE n.recipient_id = $1 
+            ORDER BY n.created_at DESC 
+            LIMIT 30;
+        `,
+      [userId]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju notifikacija:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+
 
 // ---DOHVATANJE SVIH KOMENTARA ZA OBJAVU ---
 app.get("/api/posts/:postId/comments", async (req, res) => {
