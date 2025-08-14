@@ -751,6 +751,283 @@ app.get("/api/profile/me", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.get("/api/tags", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, name FROM tags ORDER BY name ASC"
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju tagova:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.get("/api/profile/interests", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT tag_id FROM user_interested_tags WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.status(200).json(rows.map((row) => row.tag_id));
+  } catch (error) {
+    console.error("Greška pri dohvatanju interesovanja:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.put("/api/profile/interests", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { tagIds } = req.body;
+
+  if (!Array.isArray(tagIds)) {
+    return res.status(400).json({ error: "Očekivan je niz ID-jeva tagova." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    await client.query("DELETE FROM user_interested_tags WHERE user_id = $1", [
+      userId,
+    ]);
+
+    if (tagIds.length > 0) {
+      const values = tagIds
+        .map((tagId, index) => `($1, $${index + 2})`)
+        .join(",");
+      const query = `INSERT INTO user_interested_tags (user_id, tag_id) VALUES ${values}`;
+
+      await client.query(query, [userId, ...tagIds]);
+    }
+
+    await client.query("COMMIT");
+    res.status(200).json({ message: "Interesovanja su uspešno ažurirana." });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Greška pri ažuriranju interesovanja:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/api/profile/moderators", ClerkExpressWithAuth(), async (req, res) => {
+  const bloggerClerkId = req.auth.userId;
+  try {
+    const bloggerId = await getInternalUserId(bloggerClerkId);
+    if (!bloggerId)
+      return res.status(404).json({ error: "Bloger nije pronađen." });
+
+    const { rows } = await pool.query(
+      `
+            SELECT u.id, u.username, u.profile_picture_url
+            FROM users u
+            JOIN moderator_permissions mp ON u.id = mp.moderator_id
+            WHERE mp.blogger_id = $1
+            ORDER BY u.username;
+        `,
+      [bloggerId]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju moderatora:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.post(
+  "/api/profile/moderators",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const bloggerClerkId = req.auth.userId;
+    const { username: moderatorUsername } = req.body;
+
+    if (!moderatorUsername) {
+      return res
+        .status(400)
+        .json({ error: "Korisničko ime moderatora je obavezno." });
+    }
+
+    try {
+      const bloggerId = await getInternalUserId(bloggerClerkId);
+      if (!bloggerId)
+        return res.status(404).json({ error: "Bloger nije pronađen." });
+
+      const moderatorResult = await pool.query(
+        "SELECT id, username FROM users WHERE username = $1",
+        [moderatorUsername]
+      );
+
+      if (moderatorResult.rowCount === 0) {
+        return res.status(404).json({
+          error: `Korisnik sa imenom "${moderatorUsername}" nije pronađen.`,
+        });
+      }
+
+      const moderator = moderatorResult.rows[0];
+
+      if (moderator.id === bloggerId) {
+        return res
+          .status(400)
+          .json({ error: "Ne možete dodati sebe kao moderatora." });
+      }
+
+      await pool.query(
+        "INSERT INTO moderator_permissions (blogger_id, moderator_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [bloggerId, moderator.id]
+      );
+
+      const newModeratorData = await pool.query(
+        "SELECT id, username, profile_picture_url FROM users WHERE id = $1",
+        [moderator.id]
+      );
+
+      res.status(201).json(newModeratorData.rows[0]);
+    } catch (error) {
+      console.error("Greška pri dodavanju moderatora:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+app.delete(
+  "/api/profile/moderators/:moderatorId",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const bloggerClerkId = req.auth.userId;
+    const { moderatorId } = req.params;
+
+    try {
+      const bloggerId = await getInternalUserId(bloggerClerkId);
+      if (!bloggerId)
+        return res.status(404).json({ error: "Bloger nije pronađen." });
+
+      const result = await pool.query(
+        "DELETE FROM moderator_permissions WHERE blogger_id = $1 AND moderator_id = $2",
+        [bloggerId, moderatorId]
+      );
+
+      if (result.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ error: "Dozvola nije pronađena ili nemate pristup." });
+      }
+
+      res.status(200).json({ message: "Moderator uspešno uklonjen." });
+    } catch (error) {
+      console.error("Greška pri uklanjanju moderatora:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+app.delete("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { postId } = req.params;
+
+  try {
+    const userResult = await pool.query(
+      "SELECT id, role FROM users WHERE clerk_id = $1",
+      [clerkId]
+    );
+    if (userResult.rowCount === 0)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    const deleter = userResult.rows[0];
+
+    const postResult = await pool.query(
+      "SELECT author_id FROM posts WHERE id = $1",
+      [postId]
+    );
+    if (postResult.rowCount === 0)
+      return res.status(404).json({ error: "Post nije pronađen." });
+    const post = postResult.rows[0];
+
+    if (deleter.role !== "moderator" && post.author_id !== deleter.id) {
+      return res
+        .status(403)
+        .json({ error: "Nemate dozvolu za brisanje ovog posta." });
+    }
+
+    await pool.query("DELETE FROM posts WHERE id = $1", [postId]);
+
+    res.status(200).json({ message: "Objava je uspešno obrisana." });
+  } catch (error) {
+    console.error("Greška pri brisanju objave:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.delete(
+  "/api/comments/:commentId",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { commentId } = req.params;
+
+    try {
+      const userResult = await pool.query(
+        "SELECT id, role FROM users WHERE clerk_id = $1",
+        [clerkId]
+      );
+      if (userResult.rowCount === 0)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const deleter = userResult.rows[0];
+
+      const commentResult = await pool.query(
+        "SELECT post_id FROM comments WHERE id = $1",
+        [commentId]
+      );
+      if (commentResult.rowCount === 0)
+        return res.status(404).json({ error: "Komentar nije pronađen." });
+      const postId = commentResult.rows[0].post_id;
+
+      const postResult = await pool.query(
+        "SELECT author_id FROM posts WHERE id = $1",
+        [postId]
+      );
+      if (postResult.rowCount === 0)
+        return res.status(404).json({ error: "Povezani post nije pronađen." });
+      const postAuthorId = postResult.rows[0].author_id;
+
+      const permissionResult = await pool.query(
+        "SELECT EXISTS (SELECT 1 FROM moderator_permissions WHERE blogger_id = $1 AND moderator_id = $2)",
+        [postAuthorId, deleter.id]
+      );
+      const isPersonalModerator = permissionResult.rows[0].exists;
+
+      if (
+        deleter.role !== "moderator" &&
+        postAuthorId !== deleter.id &&
+        !isPersonalModerator
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Nemate dozvolu za brisanje ovog komentara." });
+      }
+
+      await pool.query("DELETE FROM comments WHERE id = $1", [commentId]);
+      res.status(200).json({ message: "Komentar je uspešno obrisan." });
+    } catch (error) {
+      console.error("Greška pri brisanju komentara:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
