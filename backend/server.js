@@ -904,6 +904,37 @@ app.post(
   }
 );
 
+app.delete(
+  "/api/profile/moderators/:moderatorId",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const bloggerClerkId = req.auth.userId;
+    const { moderatorId } = req.params;
+
+    try {
+      const bloggerId = await getInternalUserId(bloggerClerkId);
+      if (!bloggerId)
+        return res.status(404).json({ error: "Bloger nije pronađen." });
+
+      const result = await pool.query(
+        "DELETE FROM moderator_permissions WHERE blogger_id = $1 AND moderator_id = $2",
+        [bloggerId, moderatorId]
+      );
+
+      if (result.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ error: "Dozvola nije pronađena ili nemate pristup." });
+      }
+
+      res.status(200).json({ message: "Moderator uspešno uklonjen." });
+    } catch (error) {
+      console.error("Greška pri uklanjanju moderatora:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
