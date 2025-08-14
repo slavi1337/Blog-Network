@@ -971,6 +971,62 @@ app.delete("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.delete(
+  "/api/comments/:commentId",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { commentId } = req.params;
+
+    try {
+      const userResult = await pool.query(
+        "SELECT id, role FROM users WHERE clerk_id = $1",
+        [clerkId]
+      );
+      if (userResult.rowCount === 0)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const deleter = userResult.rows[0];
+
+      const commentResult = await pool.query(
+        "SELECT post_id FROM comments WHERE id = $1",
+        [commentId]
+      );
+      if (commentResult.rowCount === 0)
+        return res.status(404).json({ error: "Komentar nije pronađen." });
+      const postId = commentResult.rows[0].post_id;
+
+      const postResult = await pool.query(
+        "SELECT author_id FROM posts WHERE id = $1",
+        [postId]
+      );
+      if (postResult.rowCount === 0)
+        return res.status(404).json({ error: "Povezani post nije pronađen." });
+      const postAuthorId = postResult.rows[0].author_id;
+
+      const permissionResult = await pool.query(
+        "SELECT EXISTS (SELECT 1 FROM moderator_permissions WHERE blogger_id = $1 AND moderator_id = $2)",
+        [postAuthorId, deleter.id]
+      );
+      const isPersonalModerator = permissionResult.rows[0].exists;
+
+      if (
+        deleter.role !== "moderator" &&
+        postAuthorId !== deleter.id &&
+        !isPersonalModerator
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Nemate dozvolu za brisanje ovog komentara." });
+      }
+
+      await pool.query("DELETE FROM comments WHERE id = $1", [commentId]);
+      res.status(200).json({ message: "Komentar je uspešno obrisan." });
+    } catch (error) {
+      console.error("Greška pri brisanju komentara:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
 
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
