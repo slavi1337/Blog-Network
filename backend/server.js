@@ -775,11 +775,52 @@ app.get("/api/profile/interests", ClerkExpressWithAuth(), async (req, res) => {
       `SELECT tag_id FROM user_interested_tags WHERE user_id = $1`,
       [userId]
     );
-    
+
     res.status(200).json(rows.map((row) => row.tag_id));
   } catch (error) {
     console.error("Greška pri dohvatanju interesovanja:", error);
     res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.put("/api/profile/interests", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { tagIds } = req.body;
+
+  if (!Array.isArray(tagIds)) {
+    return res.status(400).json({ error: "Očekivan je niz ID-jeva tagova." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    await client.query("DELETE FROM user_interested_tags WHERE user_id = $1", [
+      userId,
+    ]);
+
+    if (tagIds.length > 0) {
+      const values = tagIds
+        .map((tagId, index) => `($1, $${index + 2})`)
+        .join(",");
+      const query = `INSERT INTO user_interested_tags (user_id, tag_id) VALUES ${values}`;
+
+      await client.query(query, [userId, ...tagIds]);
+    }
+
+    await client.query("COMMIT");
+    res.status(200).json({ message: "Interesovanja su uspešno ažurirana." });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Greška pri ažuriranju interesovanja:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  } finally {
+    client.release();
   }
 });
 
