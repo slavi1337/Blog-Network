@@ -541,7 +541,39 @@ app.get("/api/notifications", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.put(
+  "/api/notifications/:notificationId/read",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { notificationId } = req.params;
 
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      const result = await pool.query(
+        "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND recipient_id = $2",
+        [notificationId, userId]
+      );
+
+      if (result.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ error: "Notifikacija nije pronađena ili nemate pristup." });
+      }
+
+      res.status(200).json({ message: "Notifikacija označena kao pročitana." });
+    } catch (error) {
+      console.error(
+        "Greška pri označavanju notifikacije kao pročitane:",
+        error
+      );
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
 
 // ---DOHVATANJE SVIH KOMENTARA ZA OBJAVU ---
 app.get("/api/posts/:postId/comments", async (req, res) => {
