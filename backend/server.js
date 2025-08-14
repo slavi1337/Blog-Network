@@ -575,6 +575,36 @@ app.put(
   }
 );
 
+app.post(
+  "/api/notifications/mark-as-read",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId) {
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      }
+
+      const result = await pool.query(
+        "UPDATE notifications SET is_read = TRUE WHERE recipient_id = $1 AND is_read = FALSE",
+        [userId]
+      );
+
+      res.status(200).json({
+        message: "Sve notifikacije označene kao pročitane.",
+        updatedCount: result.rowCount,
+      });
+    } catch (error) {
+      console.error(
+        "Greška pri označavanju notifikacija kao pročitanih:",
+        error
+      );
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // ---DOHVATANJE SVIH KOMENTARA ZA OBJAVU ---
 app.get("/api/posts/:postId/comments", async (req, res) => {
   const { postId } = req.params;
@@ -620,7 +650,7 @@ app.get(
   ClerkExpressWithAuth({ optional: true }),
   async (req, res) => {
     const { username } = req.params;
-    const viewerClerkId = req.auth.userId; // ID onog ko gleda profil (može biti null)
+    const viewerClerkId = req.auth.userId;
 
     try {
       const viewerId = await getInternalUserId(viewerClerkId);
