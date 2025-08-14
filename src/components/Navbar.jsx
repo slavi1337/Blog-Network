@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Image } from "@imagekit/react";
 import { SignedIn, SignedOut, UserButton, useUser } from "@clerk/clerk-react";
 
+import NotificationBell from "./NotificationBell";
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const { isSignedIn, user } = useUser();
