@@ -359,7 +359,7 @@ app.get(
                 (SELECT vote_type FROM post_votes WHERE post_id = $1 AND user_id = $2) AS user_vote,
                 (SELECT EXISTS (SELECT 1 FROM saved_posts WHERE post_id = $1 AND user_id = $2)) AS is_saved
         `;
-
+      const statusResult = await pool.query(statusQuery, [postId, viewer.id]);
       res.json({
         ...statusResult.rows[0],
         viewer_role: viewer.role,
