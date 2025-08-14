@@ -824,6 +824,31 @@ app.put("/api/profile/interests", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.get("/api/profile/moderators", ClerkExpressWithAuth(), async (req, res) => {
+  const bloggerClerkId = req.auth.userId;
+  try {
+    const bloggerId = await getInternalUserId(bloggerClerkId);
+    if (!bloggerId)
+      return res.status(404).json({ error: "Bloger nije pronađen." });
+
+    const { rows } = await pool.query(
+      `
+            SELECT u.id, u.username, u.profile_picture_url
+            FROM users u
+            JOIN moderator_permissions mp ON u.id = mp.moderator_id
+            WHERE mp.blogger_id = $1
+            ORDER BY u.username;
+        `,
+      [bloggerId]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Greška pri dohvatanju moderatora:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 // --- API RUTA ZA SAČUVANE ČLANKE ---
 app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
