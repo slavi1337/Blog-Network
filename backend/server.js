@@ -365,6 +365,33 @@ app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.delete(
+  "/api/posts/:postId/draft",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const result = await pool.query(
+        "DELETE FROM posts WHERE id = $1 AND author_id = $2 AND status IN ('draft', 'scheduled')",
+        [postId, userId]
+      );
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          error: "Draft nije pronađen ili nemate dozvolu za brisanje.",
+        });
+      }
+      res.status(200).json({ message: "Uspešno obrisano." });
+    } catch (error) {
+      console.error("Greška pri brisanju drafta:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 app.get(
   "/api/posts/:postId/status",
   ClerkExpressWithAuth(),
