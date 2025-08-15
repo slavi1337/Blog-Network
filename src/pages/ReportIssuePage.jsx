@@ -7,6 +7,7 @@ const ReportIssuePage = () => {
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,6 +17,7 @@ const ReportIssuePage = () => {
     }
     setIsSubmitting(true);
     setError("");
+    setSuccess("");
     try {
       const token = await getToken();
       const response = await fetch("/api/issues", {
@@ -29,6 +31,9 @@ const ReportIssuePage = () => {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Došlo je do greške.");
+
+      setSuccess(data.message);
+      setDescription("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -87,6 +92,7 @@ const ReportIssuePage = () => {
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
+          {success && <p className="text-green-500 text-sm">{success}</p>}
 
           <div className="text-right">
             <button
