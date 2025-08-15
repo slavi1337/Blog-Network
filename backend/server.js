@@ -292,7 +292,7 @@ app.get("/api/public/posts", async (req, res) => {
 app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   const { postId } = req.params;
-  const { title, categoryId, content, tags } = req.body;
+  const { title, categoryId, content, tags, status, publishAt } = req.body;
 
   if (!title || !content || !categoryId) {
     return res
@@ -300,32 +300,32 @@ app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
       .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
   }
 
-  const client = await pool.connect();
+  const finalStatus =
+    status === "draft" || status === "scheduled" ? status : "published";
+  const finalPublishAt =
+    finalStatus === "scheduled" && publishAt ? publishAt : null;
 
+  const client = await pool.connect();
   try {
     await client.query("BEGIN");
-
     const internalUserId = await getInternalUserId(clerkId);
-    if (!internalUserId) {
+    if (!internalUserId)
       return res.status(404).json({ error: "Korisnik nije pronađen." });
-    }
 
     const postResult = await client.query(
       "SELECT author_id FROM posts WHERE id = $1",
       [postId]
     );
-    if (postResult.rowCount === 0) {
+    if (postResult.rowCount === 0)
       return res.status(404).json({ error: "Post nije pronađen." });
-    }
-    if (postResult.rows[0].author_id !== internalUserId) {
+    if (postResult.rows[0].author_id !== internalUserId)
       return res
         .status(403)
         .json({ error: "Nemate dozvolu da menjate ovaj post." });
-    }
 
     await client.query(
-      `UPDATE posts SET title = $1, category_id = $2, content = $3, updated_at = NOW() WHERE id = $4`,
-      [title, categoryId, content, postId]
+      `UPDATE posts SET title = $1, category_id = $2, content = $3, status = $4, publish_at = $5, updated_at = NOW() WHERE id = $6`,
+      [title, categoryId, content, finalStatus, finalPublishAt, postId]
     );
 
     await client.query("DELETE FROM post_tags WHERE post_id = $1", [postId]);
@@ -334,7 +334,6 @@ app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
       .split(/\s+/)
       .map((t) => t.replace(/^#/, ""))
       .filter((t) => t.length > 0);
-
     for (const tagName of listaTagova) {
       let { rows } = await client.query("SELECT id FROM tags WHERE name = $1", [
         tagName,
