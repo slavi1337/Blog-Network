@@ -392,6 +392,25 @@ app.delete(
   }
 );
 
+app.get("/api/profile/drafts", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    const { rows } = await pool.query(
+      `SELECT id, title, slug, status, updated_at, publish_at 
+             FROM posts 
+             WHERE author_id = $1 AND status IN ('draft', 'scheduled') 
+             ORDER BY updated_at DESC`,
+      [userId]
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.get(
   "/api/posts/:postId/status",
   ClerkExpressWithAuth(),
