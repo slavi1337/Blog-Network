@@ -85,15 +85,19 @@ const getInternalUserId = async (clerkId) => {
 // --- API RUTA ZA KREIRANJE NOVOG POSTA ---
 app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
+  const { title, categoryId, content, tags, status, publishAt } = req.body;
+
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
-
-  const { title, categoryId, content, tags } = req.body;
-
   if (!title || !content || !categoryId) {
     return res
       .status(400)
       .json({ error: "Naslov, sadržaj, i kategorija su obavezni." });
   }
+
+  const finalStatus =
+    status === "draft" || status === "scheduled" ? status : "published";
+  const finalPublishAt =
+    finalStatus === "scheduled" && publishAt ? publishAt : null;
 
   try {
     const authorId = await getInternalUserId(clerkId);
@@ -108,11 +112,20 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
     const slug = `${slugBase}-${Date.now()}`;
 
     const query = `
-      INSERT INTO posts (author_id, category_id, title, slug, content, status)
-      VALUES ($1, $2, $3, $4, $5, 'published')
-      RETURNING id, slug;
+      INSERT INTO posts (author_id, category_id, title, slug, content, status, publish_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, slug, status;
     `;
-    const values = [authorId, categoryId, title, slug, content];
+    
+    const values = [
+      authorId,
+      categoryId,
+      title,
+      slug,
+      content,
+      finalStatus,
+      finalPublishAt,
+    ];
     const newPostResult = await pool.query(query, values);
     const newPost = newPostResult.rows[0];
     const newPostId = newPost.id;
@@ -144,32 +157,11 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       );
     }
 
-    res.status(201).json({ message: "Post uspešno kreiran!", post: newPost });
-
-    try {
-      const followersRes = await pool.query(
-        `SELECT follower_id FROM followers WHERE followed_id = $1 AND notifications_enabled = TRUE`,
-        [authorId]
-      );
-      if (followersRes.rowCount > 0) {
-        const followerIds = followersRes.rows.map((r) => r.follower_id);
-        const notificationParams = followerIds.flatMap((id) => [
-          id,
-          "new_post_from_followed",
-          newPost.id,
-        ]);
-        const valuePlaceholders = followerIds
-          .map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`)
-          .join(",");
-        const notificationQuery = `INSERT INTO notifications (recipient_id, type, related_entity_id) VALUES ${valuePlaceholders}`;
-        await pool.query(notificationQuery, notificationParams);
-      }
-    } catch (notificationError) {
-      console.error(
-        "Greška pri slanju notifikacija za novi post:",
-        notificationError
-      );
-    }
+    res.status(201).json({
+      message: `Post uspešno sačuvan kao ${finalStatus}!`,
+      post: newPost,
+    });
+    
   } catch (error) {
     console.error("Greška pri kreiranju posta:", error);
     res.status(500).json({ error: "Greška na serveru." });
