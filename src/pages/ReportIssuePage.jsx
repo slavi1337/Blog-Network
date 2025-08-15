@@ -2,8 +2,39 @@ import { useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 
 const ReportIssuePage = () => {
+  const { getToken } = useAuth();
   const [issueType, setIssueType] = useState("bug_report");
   const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!description.trim()) {
+      setError("Opis problema ne može biti prazan.");
+      return;
+    }
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const token = await getToken();
+      const response = await fetch("/api/issues", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ issueType, description }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Došlo je do greške.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
@@ -16,7 +47,7 @@ const ReportIssuePage = () => {
           nas kako bismo mogli da reagujemo.
         </p>
 
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label
               htmlFor="issueType"
@@ -55,12 +86,15 @@ const ReportIssuePage = () => {
             />
           </div>
 
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
           <div className="text-right">
             <button
               type="submit"
-              className="py-2 px-6 rounded-lg bg-orange-500 text-white font-semibold transition-colors hover:bg-orange-600"
+              disabled={isSubmitting}
+              className="py-2 px-6 rounded-lg bg-orange-500 text-white font-semibold transition-colors disabled:bg-gray-400 hover:bg-orange-600"
             >
-              Pošalji Prijavu
+              {isSubmitting ? "Slanje..." : "Pošalji Prijavu"}
             </button>
           </div>
         </form>
