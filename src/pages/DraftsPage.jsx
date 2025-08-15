@@ -27,6 +27,13 @@ const DraftsPage = () => {
     fetchDrafts();
   }, [getToken]);
 
+  const getStatusLabel = (post) => {
+    if (post.status === "scheduled") {
+      return `Zakazano za: ${new Date(post.publish_at).toLocaleString()}`;
+    }
+    return "Radna verzija (Draft)";
+  };
+
   if (loading) return <p>Učitavanje...</p>;
 
   return (
@@ -45,6 +52,17 @@ const DraftsPage = () => {
                 <h2 className="text-xl font-bold text-gray-800">
                   {post.title}
                 </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {getStatusLabel(post)}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <Link
+                  to={`/edit-post/${post.slug}`}
+                  className="px-4 py-2 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200"
+                >
+                  Uredi
+                </Link>
               </div>
             </div>
           ))
