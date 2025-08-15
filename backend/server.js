@@ -411,6 +411,40 @@ app.get("/api/profile/drafts", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.get("/api/posts/:slug/edit", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { slug } = req.params;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+    const query = `
+            SELECT 
+                p.id, p.title, p.slug, p.content, p.status, p.publish_at,
+                c.id AS category_id,
+                STRING_AGG(t.name, ' ') AS tags
+            FROM posts p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN post_tags pt ON p.id = pt.post_id
+            LEFT JOIN tags t ON pt.tag_id = t.id
+            WHERE p.slug = $1 AND p.author_id = $2
+            GROUP BY p.id, c.id;
+        `;
+    const { rows } = await pool.query(query, [slug, userId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        error: "Post nije pronađen ili nemate dozvolu za uređivanje.",
+      });
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Greška pri dohvatanju posta za uređivanje:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.get(
   "/api/posts/:postId/status",
   ClerkExpressWithAuth(),
