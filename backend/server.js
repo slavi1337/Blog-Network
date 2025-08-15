@@ -227,26 +227,25 @@ app.get("/api/public/posts/:slug", async (req, res) => {
   const { slug } = req.params;
   try {
     const postQuery = `
-          SELECT 
-          p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
-          u.username AS author_username,
-          c.name AS category_name,
-          c.id AS category_id, -- Vraćamo i ID kategorije za lakše popunjavanje forme
-          (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
-          STRING_AGG(t.name, ' ') AS tags
-          FROM posts p
-          JOIN users u ON p.author_id = u.id
-          JOIN categories c ON p.category_id = c.id
-          LEFT JOIN post_tags pt ON p.id = pt.post_id
-          LEFT JOIN tags t ON pt.tag_id = t.id
-          WHERE p.slug = $1 AND p.status = 'published'
-          GROUP BY p.id, u.id, c.id;
-        `;
+      SELECT p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
+             u.username AS author_username, c.name AS category_name, c.id AS category_id,
+             (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
+             STRING_AGG(t.name, ' ') AS tags
+      FROM posts p
+      JOIN users u ON p.author_id = u.id
+      JOIN categories c ON p.category_id = c.id
+      LEFT JOIN post_tags pt ON p.id = pt.post_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
+      WHERE p.slug = $1 AND p.status = 'published'
+      GROUP BY p.id, u.id, c.id;
+    `;
 
     const postResult = await pool.query(postQuery, [slug]);
 
     if (postResult.rowCount === 0) {
-      return res.status(404).json({ error: "Post nije pronađen." });
+      return res
+        .status(404)
+        .json({ error: "Post nije pronađen ili još uvek nije objavljen." });
     }
 
     res.json(postResult.rows[0]);
