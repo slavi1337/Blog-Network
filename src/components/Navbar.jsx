@@ -16,8 +16,19 @@ const Navbar = () => {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const handleSearch = (query) => {
-    navigate(`/?search=${encodeURIComponent(query)}`);
+  const handleSearch = (query, filters = {}) => {
+    const params = new URLSearchParams();
+
+    if (query) params.set("search", query);
+
+    if (filters.minLikes !== "") params.set("minLikes", filters.minLikes);
+    if (filters.maxLikes !== "") params.set("maxLikes", filters.maxLikes);
+    if (filters.minDateActive && filters.minDate)
+      params.set("minDate", filters.minDate);
+    if (filters.maxDateActive && filters.maxDate)
+      params.set("maxDate", filters.maxDate);
+
+    navigate(`/?${params.toString()}`);
   };
 
   const setTheme = (theme) => {
