@@ -169,46 +169,97 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
 
 app.get("/api/public/search", async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = 5;
+  const limit = 8;
   const offset = (page - 1) * limit;
-  const search = (req.query.search || "").trim();
 
-  const searchActive = search.length > 0;
+  const search = (req.query.search || "").trim();
+  const minLikes = parseInt(req.query.minLikes);
+  const maxLikes = parseInt(req.query.maxLikes);
+  const minDate = req.query.minDate;
+  const maxDate = req.query.maxDate;
+
+  const params = [];
+  const whereClauses = ["p.status = 'published'"];
+  let paramIndex = 1;
+
+  if (search.length > 0) {
+    whereClauses.push(
+      `(p.title ILIKE '%' || $${paramIndex} || '%' OR p.content ILIKE '%' || $${paramIndex} || '%')`
+    );
+    params.push(search);
+    paramIndex++;
+  }
+
+  if (minDate) {
+    whereClauses.push(`p.created_at >= $${paramIndex}`);
+    params.push(minDate);
+    paramIndex++;
+  }
+
+  if (maxDate) {
+    whereClauses.push(`p.created_at <= $${paramIndex}`);
+    params.push(maxDate);
+    paramIndex++;
+  }
+
+  const whereClause =
+    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+  const havingClauses = [];
+  if (!isNaN(minLikes)) {
+    havingClauses.push(`COALESCE(SUM(v.vote_type), 0) >= $${paramIndex}`);
+    params.push(minLikes);
+    paramIndex++;
+  }
+
+  if (!isNaN(maxLikes)) {
+    havingClauses.push(`COALESCE(SUM(v.vote_type), 0) <= $${paramIndex}`);
+    params.push(maxLikes);
+    paramIndex++;
+  }
+
+  const havingClause =
+    havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : "";
+
+  const postsQuery = `
+    SELECT 
+      p.id, p.title, p.slug, p.content, p.created_at,
+      u.username AS author_username,
+      c.name AS category_name,
+      COALESCE(SUM(v.vote_type), 0) AS vote_score
+    FROM posts p
+    JOIN users u ON p.author_id = u.id
+    JOIN categories c ON p.category_id = c.id
+    LEFT JOIN post_votes v ON v.post_id = p.id
+    ${whereClause}
+    GROUP BY p.id, u.username, c.name
+    ${havingClause}
+    ORDER BY p.created_at DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
+
+  params.push(limit, offset);
+
+  console.log("SQL query:", postsQuery);
+  console.log("Params:", params);
 
   try {
-    const searchClause = `
-      AND (p.title ILIKE '%' || $1 || '%' OR p.content ILIKE '%' || $1 || '%')
-    `;
-
-    const postsQuery = `
-      SELECT 
-        p.id, p.title, p.slug, p.content, p.created_at,
-        u.username AS author_username,
-        c.name AS category_name,
-        (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
-      FROM posts p
-      JOIN users u ON p.author_id = u.id
-      JOIN categories c ON p.category_id = c.id
-      WHERE p.status = 'published'
-      ${searchActive ? searchClause : ""}
-      ORDER BY p.created_at DESC
-      LIMIT $${searchActive ? 2 : 1} OFFSET $${searchActive ? 3 : 2}
-    `;
-
-    const queryParams = searchActive
-      ? [search, limit, offset]
-      : [limit, offset];
-
-    const { rows } = await pool.query(postsQuery, queryParams);
+    const { rows } = await pool.query(postsQuery, params);
 
     const countQuery = `
-      SELECT COUNT(*) FROM posts p
-      WHERE p.status = 'published'
-      ${searchActive ? searchClause : ""}
+      SELECT COUNT(*) FROM (
+        SELECT p.id
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        JOIN categories c ON p.category_id = c.id
+        LEFT JOIN post_votes v ON v.post_id = p.id
+        ${whereClause}
+        GROUP BY p.id, u.username, c.name
+        ${havingClause}
+      ) AS filtered_posts
     `;
 
-    const countParams = searchActive ? [search] : [];
-
+    const countParams = params.slice(0, paramIndex - 1);
     const countResult = await pool.query(countQuery, countParams);
 
     const total = parseInt(countResult.rows[0].count);
