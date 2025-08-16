@@ -236,7 +236,7 @@ const BlogCreationPage = () => {
               placeholder="Kako napraviti savršenu kafu..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
               required
             />
           </div>
@@ -253,7 +253,7 @@ const BlogCreationPage = () => {
               id="kategorija"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
               disabled={loadingCategories}
               required
             >
@@ -282,7 +282,7 @@ const BlogCreationPage = () => {
               placeholder="info kafa priprema"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -353,7 +353,7 @@ const BlogCreationPage = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="py-2 px-8 rounded-lg bg-orange-500 text-white font-semibold transition-colors disabled:bg-gray-400 hover:bg-orange-600"
+              className="py-2 px-8 rounded-lg bg-primary text-white font-semibold transition-colors disabled:bg-gray-400 hover:bg-primary-accent"
             >
               {isSubmitting
                 ? "Slanje..."

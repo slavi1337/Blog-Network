@@ -140,7 +140,7 @@ const NotificationBell = () => {
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={isMarking}
-                className="text-xs text-orange-600 hover:underline font-semibold disabled:text-gray-400"
+                className="text-xs text-primary-accent hover:underline font-semibold disabled:text-gray-400"
               >
                 {isMarking ? "Obeležavanje..." : "Označi sve kao pročitano"}
               </button>

@@ -125,7 +125,7 @@ const SinglePostPage = () => {
     };
     fetchPublicPostData();
   }, [slug]);
-  
+
   // Oznacava post kao procitan
   useEffect(() => {
     // Samo ako je korisnik prijavljen
@@ -324,7 +324,7 @@ const SinglePostPage = () => {
               Autor:{" "}
               <Link
                 to={`/profile/${post.author_username}`}
-                className="font-semibold hover:text-orange-600"
+                className="font-semibold hover:text-primary-accent"
               >
                 {post.author_username}
               </Link>
@@ -342,7 +342,7 @@ const SinglePostPage = () => {
           {isSignedIn && (
             <button
               onClick={handleSaveToggle}
-              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-primary-accent transition-colors"
               title={isSaved ? "Ukloni iz sačuvanih" : "Sačuvaj za kasnije"}
             >
               <BookmarkIcon saved={isSaved} />
@@ -352,7 +352,7 @@ const SinglePostPage = () => {
           {isSignedIn && user?.username === post?.author_username && (
             <Link
               to={`/edit-post/${post.slug}`}
-              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-primary-accent transition-colors"
               title="Uredi objavu"
             >
               <EditIcon />
@@ -431,7 +431,7 @@ const SinglePostPage = () => {
             <p className="text-gray-700">
               <Link
                 to="/sign-in"
-                className="text-orange-600 font-bold hover:underline"
+                className="text-primary-accent font-bold hover:underline"
               >
                 Prijavite se
               </Link>{" "}

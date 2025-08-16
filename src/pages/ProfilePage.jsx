@@ -6,7 +6,7 @@ import PostList from "../components/PostList";
 const BellOnIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6 text-orange-500"
+    className="h-6 w-6 text-primary"
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
@@ -174,7 +174,7 @@ const ProfilePage = () => {
     const currentPath = location.pathname;
     const basePath = `/profile/${profileUsername}`;
     const activeClass =
-      "block w-full text-left py-2 px-4 rounded-lg bg-orange-500 text-white font-semibold shadow-md";
+      "block w-full text-left py-2 px-4 rounded-lg bg-primary text-white font-semibold shadow-md";
     const inactiveClass =
       "block w-full text-left py-2 px-4 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold transition-colors";
 
@@ -234,7 +234,7 @@ const ProfilePage = () => {
         <img
           src={profileData.profile_picture_url}
           alt="Profilna slika"
-          className="w-32 h-32 rounded-full border-4 border-orange-500 object-cover"
+          className="w-32 h-32 rounded-full border-4 border-primary object-cover"
         />
         <div className="flex-1 text-center md:text-left">
           <h1 className="text-3xl font-bold">
@@ -263,7 +263,7 @@ const ProfilePage = () => {
                   className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                     isFollowing
                       ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
+                      : "bg-primary text-white hover:bg-primary-accent"
                   }`}
                 >
                   {isFollowing ? "Otprati" : "Zaprati"}

@@ -20,7 +20,7 @@ const UserList = ({ users, emptyMessage = "Nema korisnika za prikaz." }) => {
           <div className="flex-grow">
             <Link
               to={`/profile/${user.username}`}
-              className="text-lg font-bold text-gray-800 hover:text-orange-600"
+              className="text-lg font-bold text-gray-800 hover:text-primary-accent"
             >
               {user.first_name} {user.last_name}
             </Link>
@@ -28,7 +28,7 @@ const UserList = ({ users, emptyMessage = "Nema korisnika za prikaz." }) => {
           </div>
           <Link
             to={`/profile/${user.username}`}
-            className="px-3 py-1 text-sm rounded-full bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200"
+            className="px-3 py-1 text-sm rounded-full bg-orange-100 text-primary-accent font-semibold hover:bg-orange-200"
           >
             Pogledaj profil
           </Link>

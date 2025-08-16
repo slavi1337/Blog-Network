@@ -14,7 +14,7 @@ const PostList = ({ posts }) => {
         >
           <Link
             to={`/posts/${post.slug}`}
-            className="text-xl font-bold text-gray-800 hover:text-orange-600"
+            className="text-xl font-bold text-gray-800 hover:text-primary-accent"
           >
             {post.title}
           </Link>
