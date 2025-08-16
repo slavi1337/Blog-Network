@@ -116,7 +116,7 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id, slug, status;
     `;
-    
+
     const values = [
       authorId,
       categoryId,
@@ -161,7 +161,6 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       message: `Post uspešno sačuvan kao ${finalStatus}!`,
       post: newPost,
     });
-    
   } catch (error) {
     console.error("Greška pri kreiranju posta:", error);
     res.status(500).json({ error: "Greška na serveru." });
@@ -773,6 +772,60 @@ app.post(
         "Greška pri označavanju notifikacija kao pročitanih:",
         error
       );
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// --- RUTA ZA PRIJAVU PROBLEMA ---
+app.post(
+  "/api/issues",
+  ClerkExpressWithAuth({ optional: true }),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { issueType, description, relatedEntityType, relatedEntityId } =
+      req.body;
+
+    // Validacija
+    if (!issueType || !description) {
+      return res
+        .status(400)
+        .json({ error: "Tip problema i opis su obavezni." });
+    }
+    const validIssueTypes = [
+      "bug_report",
+      "inappropriate_content",
+      "spam",
+      "other",
+    ];
+    if (!validIssueTypes.includes(issueType)) {
+      return res.status(400).json({ error: "Nevažeći tip problema." });
+    }
+
+    try {
+      const reporterUserId = await getInternalUserId(clerkId); // Biće null ako korisnik nije prijavljen
+
+      const query = `
+            INSERT INTO reported_issues 
+                (reporter_user_id, issue_type, description, related_entity_type, related_entity_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id;
+        `;
+      const values = [
+        reporterUserId,
+        issueType,
+        description,
+        relatedEntityType || null,
+        relatedEntityId || null,
+      ];
+
+      await pool.query(query, values);
+
+      res.status(201).json({
+        message: "Problem je uspešno prijavljen. Hvala vam na pomoći!",
+      });
+    } catch (error) {
+      console.error("Greška pri prijavi problema:", error);
       res.status(500).json({ error: "Greška na serveru." });
     }
   }
