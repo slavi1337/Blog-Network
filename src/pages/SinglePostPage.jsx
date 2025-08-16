@@ -125,6 +125,25 @@ const SinglePostPage = () => {
     };
     fetchPublicPostData();
   }, [slug]);
+  
+  // Oznacava post kao procitan
+  useEffect(() => {
+    // Samo ako je koristnik prijavljen
+    if (isSignedIn && post?.id) {
+      const recordReadingHistory = async () => {
+        try {
+          const token = await getToken();
+          fetch(`/api/posts/${post.id}/history`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (err) {
+          console.error("Neuspjesno upisivanje u istoriji:", err);
+        }
+      };
+      recordReadingHistory();
+    }
+  }, [isSignedIn, post, getToken]);
 
   useEffect(() => {
     if (post && isLoaded && isSignedIn) {
