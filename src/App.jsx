@@ -30,14 +30,24 @@ const HomePage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
+  const minLikes = searchParams.get("minLikes") || "";
+  const maxLikes = searchParams.get("maxLikes") || "";
+  const minDate = searchParams.get("minDate") || "";
+  const maxDate = searchParams.get("maxDate") || "";
 
   const fetchPosts = async (pageToFetch) => {
     try {
-      const res = await fetch(
-        `/api/public/search?search=${encodeURIComponent(
-          searchQuery
-        )}&page=${pageToFetch}`
-      );
+      const params = new URLSearchParams();
+
+      if (searchQuery) params.append("search", searchQuery);
+      if (minLikes) params.append("minLikes", minLikes);
+      if (maxLikes) params.append("maxLikes", maxLikes);
+      if (minDate) params.append("minDate", minDate);
+      if (maxDate) params.append("maxDate", maxDate);
+
+      params.append("page", pageToFetch);
+
+      const res = await fetch(`/api/public/search?${params.toString()}`);
       const data = await res.json();
 
       if (pageToFetch === 1) {
@@ -47,7 +57,7 @@ const HomePage = () => {
       }
 
       setHasMore(data.hasMore);
-      setPage(pageToFetch + 1); // sljedeći broj stranice za sljedeći put
+      setPage(pageToFetch + 1); //sl br stranice za sl put
     } catch (error) {
       console.error("Greška prilikom dohvatanja postova:", error);
     }
@@ -57,7 +67,7 @@ const HomePage = () => {
     setPage(1);
     setPosts([]);
     fetchPosts(1);
-  }, [searchQuery]);
+  }, [searchQuery, minLikes, maxLikes, minDate, maxDate]);
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
@@ -90,7 +100,7 @@ const HomePage = () => {
       </div>
 
       <div className="mt-8 text-center">
-        <h1 className="text-3xl font-bold text-primary-accent mb-6">
+        <h1 className="text-3xl font-bold text-primary mb-6">
           Objava sedmice!
         </h1>
         <div className="flex flex-row border-4 border-primary p-4 mt-4">
