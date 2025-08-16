@@ -786,7 +786,6 @@ app.post(
     const { issueType, description, relatedEntityType, relatedEntityId } =
       req.body;
 
-    // Validacija
     if (!issueType || !description) {
       return res
         .status(400)
@@ -803,7 +802,7 @@ app.post(
     }
 
     try {
-      const reporterUserId = await getInternalUserId(clerkId); // Biće null ako korisnik nije prijavljen
+      const reporterUserId = await getInternalUserId(clerkId); //null ako user nije prijavljen
 
       const query = `
             INSERT INTO reported_issues 
@@ -822,7 +821,7 @@ app.post(
       await pool.query(query, values);
 
       res.status(201).json({
-        message: "Problem je uspešno prijavljen. Hvala vam na pomoći!",
+        message: "Problem je uspješno prijavljen. Hvala vam na pomoći!",
       });
     } catch (error) {
       console.error("Greška pri prijavi problema:", error);
