@@ -23,7 +23,7 @@ const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
           {isSignedIn && (
             <button
               onClick={() => setShowReplyForm(!showReplyForm)}
-              className="font-semibold hover:text-orange-600"
+              className="font-semibold hover:text-primary-accent"
             >
               {showReplyForm ? "Otkaži" : "Odgovori"}
             </button>

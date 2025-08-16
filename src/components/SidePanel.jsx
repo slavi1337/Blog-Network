@@ -36,7 +36,7 @@ const SidePanel = () => {
                 key={link.to}
                 to={link.to}
                 onClick={closePanel}
-                className="text-textcolor text-lg font-semibold py-2 px-3 rounded-md hover:bg-orange-500 hover:text-white transition-colors"
+                className="text-textcolor text-lg font-semibold py-2 px-3 rounded-md hover:bg-primary hover:text-white transition-colors"
               >
                 {link.text}
               </Link>
