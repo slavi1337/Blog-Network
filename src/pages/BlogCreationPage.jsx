@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
@@ -29,14 +29,17 @@ const BlogCreationPage = () => {
   const [tags, setTags] = useState("");
   const [content, setContent] = useState("");
   const [postId, setPostId] = useState(null);
+  const [publishAt, setPublishAt] = useState("");
+  const [currentStatus, setCurrentStatus] = useState("draft");
 
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const navigate = useNavigate();
   const { getToken } = useAuth();
+  const { user } = useUser();
+  const navigate = useNavigate();
 
   const quillRef = useRef(null);
   const {
@@ -63,9 +66,19 @@ const BlogCreationPage = () => {
     if (isEditMode) {
       const fetchPostForEdit = async () => {
         try {
-          const response = await fetch(`/api/public/posts/${slug}`);
-          if (!response.ok)
-            throw new Error("Nije moguće učitati podatke za izmjenu.");
+          const token = await getToken();
+
+          const response = await fetch(`/api/posts/${slug}/edit`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(
+              errData.error || "Nije moguće učitati podatke za izmenu."
+            );
+          }
+
           const data = await response.json();
 
           setTitle(data.title);
@@ -73,13 +86,24 @@ const BlogCreationPage = () => {
           setCategoryId(data.category_id);
           setTags(data.tags || "");
           setPostId(data.id);
+          setCurrentStatus(data.status);
+
+          if (data.status === "scheduled" && data.publish_at) {
+            const utcDate = new Date(data.publish_at);
+            const year = utcDate.getFullYear();
+            const month = (utcDate.getMonth() + 1).toString().padStart(2, "0");
+            const day = utcDate.getDate().toString().padStart(2, "0");
+            const hours = utcDate.getHours().toString().padStart(2, "0");
+            const minutes = utcDate.getMinutes().toString().padStart(2, "0");
+            setPublishAt(`${year}-${month}-${day}T${hours}:${minutes}`);
+          }
         } catch (err) {
           setError(err.message);
         }
       };
       fetchPostForEdit();
     }
-  }, [isEditMode, slug]);
+  }, [isEditMode, slug, getToken]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -112,59 +136,72 @@ const BlogCreationPage = () => {
     ],
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, forcedStatus) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    let finalStatus = forcedStatus;
+    if (!finalStatus) {
+      finalStatus = publishAt ? "scheduled" : "published";
+    }
+
     if (!title.trim() || !content.trim() || !categoryId) {
       setError("Naslov, sadržaj i kategorija su obavezni.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (finalStatus === "scheduled" && !publishAt) {
+      setError("Morate izabrati vrijeme za zakazanu objavu.");
+      setIsSubmitting(false);
       return;
     }
 
-    setIsSubmitting(true);
-    setError(null);
+    const utcPublishAt =
+      finalStatus === "scheduled" ? new Date(publishAt).toISOString() : null;
 
     const postData = {
       title,
       categoryId: Number(categoryId),
       content,
       tags,
+      status: finalStatus,
+      publishAt: utcPublishAt,
     };
 
     try {
       const token = await getToken();
-      let response;
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
 
-      if (isEditMode) {
-        response = await fetch(`/api/posts/${postId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(postData),
-        });
-      } else {
-        response = await fetch("/api/posts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(postData),
-        });
-      }
+      const response = isEditMode
+        ? await fetch(`/api/posts/${postId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(postData),
+          })
+        : await fetch("/api/posts", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(postData),
+          });
 
       const responseData = await response.json();
-
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(responseData.error || "Došlo je do nepoznate greške.");
-      }
 
-      if (isEditMode) {
-        alert("Objava je uspješno ažurirana!");
-        navigate(`/posts/${slug}`);
+      alert(responseData.message || "Akcija uspješno izvršena!");
+
+      if (finalStatus === "draft" || finalStatus === "scheduled") {
+        if (user?.username) {
+          navigate(`/profile/${user.username}/drafts`);
+        } else {
+          navigate("/");
+        }
       } else {
-        alert("Blog je uspešno objavljen!");
-        navigate(`/posts/${responseData.post.slug}`);
+        navigate(`/posts/${isEditMode ? slug : responseData.post.slug}`);
       }
     } catch (err) {
       setError(err.message);
@@ -176,11 +213,10 @@ const BlogCreationPage = () => {
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold mb-6 border-b pb-4">
-          {isEditMode ? "Uredi Objavu" : "Kreirajte Novi Blog"}
+        <h1 className="text-3xl font-bold mb-6 border-b pb-4 capitalize">
+          {isEditMode ? `Uređivanje: ${currentStatus}` : "Kreirajte Novi Blog"}
         </h1>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, null)} className="space-y-6">
           {error && (
             <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
               {error}
@@ -238,7 +274,7 @@ const BlogCreationPage = () => {
               htmlFor="tags"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Tagovi (razdvojeni razmakom)
+              Tagovi
             </label>
             <input
               type="text"
@@ -267,7 +303,6 @@ const BlogCreationPage = () => {
                 </button>
               )}
             </div>
-
             {speechError && (
               <p className="text-xs text-red-500 mb-1">
                 Greška pri diktiranju: {speechError}
@@ -278,7 +313,6 @@ const BlogCreationPage = () => {
                 Diktiranje nije podržano u vašem pretraživaču.
               </p>
             )}
-
             <div className="bg-white border border-gray-300 rounded-md">
               <ReactQuill
                 ref={quillRef}
@@ -291,16 +325,40 @@ const BlogCreationPage = () => {
             </div>
           </div>
 
-          <div className="text-right pt-8">
+          <div>
+            <label
+              htmlFor="publish_at"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Zakaži objavu (opciono)
+            </label>
+            <input
+              id="publish_at"
+              type="datetime-local"
+              value={publishAt}
+              onChange={(e) => setPublishAt(e.target.value)}
+              className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+
+          <div className="flex justify-end items-center gap-4 pt-8">
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, "draft")}
+              disabled={isSubmitting}
+              className="py-2 px-6 rounded-lg bg-gray-500 text-white font-semibold transition-colors disabled:bg-gray-400 hover:bg-gray-600"
+            >
+              {isSubmitting ? "Čuvanje..." : "Sačuvaj kao Draft"}
+            </button>
             <button
               type="submit"
-              disabled={isSubmitting || (isEditMode && !postId)}
-              className="py-2 px-8 rounded-lg bg-orange-500 text-white font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-orange-600"
+              disabled={isSubmitting}
+              className="py-2 px-8 rounded-lg bg-orange-500 text-white font-semibold transition-colors disabled:bg-gray-400 hover:bg-orange-600"
             >
               {isSubmitting
-                ? isEditMode
-                  ? "Ažuriranje..."
-                  : "Objavljivanje..."
+                ? "Slanje..."
+                : publishAt
+                ? "Zakaži"
                 : isEditMode
                 ? "Ažuriraj"
                 : "Objavi"}
