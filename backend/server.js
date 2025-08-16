@@ -18,6 +18,8 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
 app.use(express.json());
@@ -68,11 +70,9 @@ const publishScheduledPosts = async () => {
     console.error("Greška pri automatskom objavljivanju postova:", error);
   } finally {
     client.release();
+    setTimeout(publishScheduledPosts, 5 * 60 * 1000); //za 5 min ponovo
   }
 };
-
-// Svaki minut se provjerava ima li zakazanih objava
-setInterval(publishScheduledPosts, 60 * 1000);
 
 const getInternalUserId = async (clerkId) => {
   if (!clerkId) return null;
@@ -1642,4 +1642,5 @@ app.get(/^(?!\/api).*/, (req, res) => {
 
 app.listen(port, () => {
   console.log(`Backend server sluša na http://localhost:${port}`);
+  publishScheduledPosts();
 });
