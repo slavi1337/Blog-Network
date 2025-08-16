@@ -88,19 +88,19 @@ const Navbar = () => {
               <div className="py-1">
                 <a
                   onClick={() => setTheme("theme-blog-network")}
-                  className="block px-4 py-2 text-sm text-textcolor hover:bg-gray-100 select-none cursor-pointer"
+                  className="block px-4 py-2 text-sm text-textcolor hover:bg-background select-none cursor-pointer"
                 >
                   Blog Network
                 </a>
                 <a
                   onClick={() => setTheme("theme-etfbl")}
-                  className="block px-4 py-2 text-sm text-textcolor hover:bg-gray-100 select-none cursor-pointer"
+                  className="block px-4 py-2 text-sm text-textcolor hover:bg-background select-none cursor-pointer"
                 >
                   ETF-BL
                 </a>
                 <a
                   onClick={() => setTheme("theme-dark")}
-                  className="block px-4 py-2 text-sm text-textcolor hover:bg-gray-100 select-none cursor-pointer"
+                  className="block px-4 py-2 text-sm text-textcolor hover:bg-background select-none cursor-pointer"
                 >
                   Dark
                 </a>
@@ -117,7 +117,7 @@ const Navbar = () => {
         </SignedIn>
         <SignedOut>
           <Link to="/sign-in">
-            <button className="py-2 px-4 rounded-3xl bg-orange-500 hover:bg-orange-700 text-white transition-all duration-300">
+            <button className="py-2 px-4 rounded-3xl bg-primary hover:bg-primary-accent text-white transition-all duration-300">
               Login
             </button>
           </Link>

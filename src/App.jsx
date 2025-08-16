@@ -73,7 +73,7 @@ const HomePage = () => {
         <div className="text-center md:text-right mb-12">
           <SignedIn>
             <Link to="/create-blog">
-              <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <button className="py-3 px-6 rounded-lg bg-primary hover:bg-primary-accent text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 Kreiraj Novu Objavu
               </button>
             </Link>
@@ -81,7 +81,7 @@ const HomePage = () => {
 
           <SignedOut>
             <Link to="/sign-up">
-              <button className="py-3 px-6 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <button className="py-3 px-6 rounded-lg bg-primary hover:bg-primary-accent text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 Pridruži se i Kreiraj Svoj Blog!
               </button>
             </Link>
@@ -90,10 +90,10 @@ const HomePage = () => {
       </div>
 
       <div className="mt-8 text-center">
-        <h1 className="text-3xl font-bold text-orange-600 mb-6">
+        <h1 className="text-3xl font-bold text-primary-accent mb-6">
           Objava sedmice!
         </h1>
-        <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
+        <div className="flex flex-row border-4 border-primary p-4 mt-4">
           <img src="/vite.svg" alt="Image" className="w-1/4 mr-8" />
           <div className="text-center w-3/4">
             <div className="mb-4">

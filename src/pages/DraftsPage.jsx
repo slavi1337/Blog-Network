@@ -82,7 +82,7 @@ const DraftsPage = () => {
               <div className="flex items-center gap-4">
                 <Link
                   to={`/edit-post/${post.slug}`}
-                  className="px-4 py-2 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200"
+                  className="px-4 py-2 text-sm font-semibold bg-orange-100 text-primary-accent rounded-full hover:bg-orange-200"
                 >
                   Uredi
                 </Link>
