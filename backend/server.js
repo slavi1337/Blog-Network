@@ -860,6 +860,38 @@ app.post(
   }
 );
 
+// UKLONI POST IZ ISTORIJE ČITANJA
+app.delete(
+  "/api/posts/:postId/history",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      const result = await pool.query(
+        "DELETE FROM reading_history WHERE user_id = $1 AND post_id = $2",
+        [userId, postId]
+      );
+
+      if (result.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ error: "Unos nije pronađen u istoriji." });
+      }
+
+      res.status(200).json({ message: "Uklonjeno iz istorije čitanja." });
+    } catch (error) {
+      console.error("Greška pri brisanju iz istorije čitanja:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // ---DOHVATANJE SVIH KOMENTARA ZA OBJAVU ---
 app.get("/api/posts/:postId/comments", async (req, res) => {
   const { postId } = req.params;
