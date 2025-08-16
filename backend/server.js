@@ -830,7 +830,7 @@ app.post(
   }
 );
 
-// 1. BILJEŽENJE ČITANJA POSTA
+// 1. BILJEŽENJE ČITANJA POSTA (ili azuriranje vremena čitanja)
 app.post(
   "/api/posts/:postId/history",
   ClerkExpressWithAuth(),
@@ -843,9 +843,11 @@ app.post(
       if (!userId)
         return res.status(404).json({ error: "Korisnik nije pronađen." });
 
+      // ON CONFLICT updejtuje vrijeme citanja
       const query = `
             INSERT INTO reading_history (user_id, post_id, read_at)
             VALUES ($1, $2, NOW())
+            ON CONFLICT (user_id, post_id) DO UPDATE
             SET read_at = NOW();
         `;
       await pool.query(query, [userId, postId]);
