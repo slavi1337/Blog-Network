@@ -830,6 +830,34 @@ app.post(
   }
 );
 
+// 1. BILJEŽENJE ČITANJA POSTA
+app.post(
+  "/api/posts/:postId/history",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      const query = `
+            INSERT INTO reading_history (user_id, post_id, read_at)
+            VALUES ($1, $2, NOW())
+            SET read_at = NOW();
+        `;
+      await pool.query(query, [userId, postId]);
+
+      res.status(201).json({ message: "Istorija čitanja ažurirana." });
+    } catch (error) {
+      console.error("Greška pri bilježenju istorije čitanja:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
 // ---DOHVATANJE SVIH KOMENTARA ZA OBJAVU ---
 app.get("/api/posts/:postId/comments", async (req, res) => {
   const { postId } = req.params;
