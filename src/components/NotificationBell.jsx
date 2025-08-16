@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const BellIcon = ({ hasUnread }) => (
   <div className="relative">
@@ -81,7 +81,12 @@ const NotificationBell = () => {
 
   const handleNotificationClick = async (notification) => {
     setIsOpen(false);
-    navigate(`/posts/${notification.post_slug}`);
+
+    if (notification.type === "issue_status_change") {
+      navigate(`/admin/issues/${notification.related_entity_id}`);
+    } else if (notification.post_slug) {
+      navigate(`/posts/${notification.post_slug}`);
+    }
 
     if (!notification.is_read) {
       setNotifications((prev) =>
@@ -105,21 +110,41 @@ const NotificationBell = () => {
     const actor = (
       <span className="font-bold">{notif.actor_username || "Neko"}</span>
     );
-    const postTitle = (
-      <span className="font-semibold italic">"{notif.post_title}"</span>
-    );
-    if (notif.type === "new_post_from_followed")
+
+    if (notif.post_slug) {
+      const postTitle = (
+        <span className="font-semibold italic">"{notif.post_title}"</span>
+      );
+      if (notif.type === "new_post_from_followed") {
+        return (
+          <>
+            {actor} je objavio/la novi post: {postTitle}
+          </>
+        );
+      }
+      if (notif.type === "reply_to_comment") {
+        return (
+          <>
+            {actor} je odgovorio/la na vaš komentar na postu {postTitle}
+          </>
+        );
+      }
+    }
+
+    if (notif.type === "issue_status_change") {
+      const shortDesc = notif.issue_description
+        ? `"${notif.issue_description.substring(0, 30)}..."`
+        : "koji ste prijavili";
+      const issueText = (
+        <span className="font-semibold">problem {shortDesc}</span>
+      );
       return (
         <>
-          {actor} je objavio/la novi post: {postTitle}
+          {actor} je ažurirao status za {issueText}
         </>
       );
-    if (notif.type === "reply_to_comment")
-      return (
-        <>
-          {actor} je odgovorio/la na vaš komentar na postu {postTitle}
-        </>
-      );
+    }
+
     return "Nova notifikacija.";
   };
 
