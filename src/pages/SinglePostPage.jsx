@@ -128,7 +128,7 @@ const SinglePostPage = () => {
   
   // Oznacava post kao procitan
   useEffect(() => {
-    // Samo ako je koristnik prijavljen
+    // Samo ako je korisnik prijavljen
     if (isSignedIn && post?.id) {
       const recordReadingHistory = async () => {
         try {
