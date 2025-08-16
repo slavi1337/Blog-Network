@@ -70,7 +70,7 @@ const CreateComment = ({
       )}
       <button
         type="submit"
-        className={`mt-2 px-4 py-2 bg-primary-accent text-white rounded hover:bg-primary-accent transition-colors ${
+        className={`mt-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-accent transition-colors ${
           isReply ? "text-sm py-1" : ""
         }`}
       >
