@@ -21,6 +21,8 @@ import AboutPage from "./pages/AboutPage";
 import EditProfilePage from "./pages/EditProfilePage.jsx";
 import FollowingPage from "./pages/FollowingPage";
 import FollowersPage from "./pages/FollowersPage";
+import ReportIssuePage from "./pages/ReportIssuePage";
+import DraftsPage from "./pages/DraftsPage";
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
@@ -29,28 +31,33 @@ const HomePage = () => {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
 
-const fetchPosts = async (pageToFetch) => {
-  try {
-    const res = await fetch(`/api/public/search?search=${encodeURIComponent(searchQuery)}&page=${pageToFetch}`);
-    const data = await res.json();
-    if (pageToFetch === 1) {
-      setPosts(data.posts);
-    } else {
-      setPosts((prev) => [...prev, ...data.posts]);
+  const fetchPosts = async (pageToFetch) => {
+    try {
+      const res = await fetch(
+        `/api/public/search?search=${encodeURIComponent(
+          searchQuery
+        )}&page=${pageToFetch}`
+      );
+      const data = await res.json();
+
+      if (pageToFetch === 1) {
+        setPosts(data.posts);
+      } else {
+        setPosts((prev) => [...prev, ...data.posts]);
+      }
+
+      setHasMore(data.hasMore);
+      setPage(pageToFetch + 1); // sljedeći broj stranice za sljedeći put
+    } catch (error) {
+      console.error("Greška prilikom dohvatanja postova:", error);
     }
-    setHasMore(data.hasMore);
-    setPage(pageToFetch + 1);
-  } catch (error) {
-    console.error("Greška prilikom dohvatanja postova:", error);
-  }
-};
+  };
 
-useEffect(() => {
-  setPage(1);
-  setPosts([]);
-  fetchPosts(1);
-}, [searchQuery]);
-
+  useEffect(() => {
+    setPage(1);
+    setPosts([]);
+    fetchPosts(1);
+  }, [searchQuery]);
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
@@ -87,7 +94,7 @@ useEffect(() => {
           Objava sedmice!
         </h1>
         <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
-          <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8" />
+          <img src="/vite.svg" alt="Image" className="w-1/4 mr-8" />
           <div className="text-center w-3/4">
             <div className="mb-4">
               <h1 className="font-bold text-xl">Naslov bloga</h1>
@@ -138,6 +145,7 @@ const App = () => {
         <Route path="create-blog" element={<BlogCreationPage />} />
 
         <Route path="about" element={<AboutPage />} />
+        <Route path="report-issue" element={<ReportIssuePage />} />
 
         <Route path="profile/:username" element={<ProfilePage />}>
           <Route index element={<ProfilePosts />} />
@@ -146,6 +154,7 @@ const App = () => {
           <Route path="edit" element={<EditProfilePage />} />
           <Route path="following" element={<FollowingPage />} />
           <Route path="followers" element={<FollowersPage />} />
+          <Route path="drafts" element={<DraftsPage />} />
         </Route>
 
         <Route path="/posts/:slug" element={<SinglePostPage />} />
