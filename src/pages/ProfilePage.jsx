@@ -322,6 +322,9 @@ const ProfilePage = () => {
                 <Link to="edit" className={getFinalLinkClass("edit")}>
                   Uredi Profil
                 </Link>
+                <Link to="drafts" className={getFinalLinkClass("drafts")}>
+                  Draftovi
+                </Link>
               </>
             )}
           </nav>
