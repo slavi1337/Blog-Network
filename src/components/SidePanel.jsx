@@ -42,6 +42,15 @@ const SidePanel = () => {
               </Link>
             ))}
           </nav>
+          <div className="absolute bottom-6 left-6 right-6 border-t border-border-main pt-4">
+            <Link
+              to="/admin/login"
+              onClick={closePanel}
+              className="text-textcolor text-md font-semibold hover:text-primary-accent transition-colors"
+            >
+              Admin Panel
+            </Link>
+          </div>
         </div>
       </div>
     </>
