@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import CreateComment from "../components/CreateComment";
 import CommentSection from "../components/CommentSection";
+import TranslatePost from "../components/TranslatePost";
 
 const ThumbsUpIcon = () => (
   <svg
@@ -104,10 +105,15 @@ const SinglePostPage = () => {
   const [canManageContent, setCanManageContent] = useState(false);
   const [canDeletePost, setCanDeletePost] = useState(false);
 
+  const [translatedTitle, setTranslatedTitle] = useState(null);
+  const [translatedContent, setTranslatedContent] = useState(null);
+
   useEffect(() => {
     const fetchPublicPostData = async () => {
       setLoading(true);
       setError(null);
+      setTranslatedTitle(null);
+      setTranslatedContent(null);
       try {
         const res = await fetch(`/api/public/posts/${slug}`);
         if (!res.ok) {
@@ -304,6 +310,16 @@ const SinglePostPage = () => {
     }
   };
 
+  const handleTranslationComplete = (title, content) => {
+    setTranslatedTitle(title);
+    setTranslatedContent(content);
+  };
+
+  const handleShowOriginal = () => {
+    setTranslatedTitle(null);
+    setTranslatedContent(null);
+  };
+
   if (loading)
     return <div className="text-center p-10 font-bold">Učitavanje...</div>;
   if (error)
@@ -317,7 +333,7 @@ const SinglePostPage = () => {
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <h1 className="text-4xl font-extrabold mb-2 text-gray-900">
-            {post.title}
+            {translatedTitle || post.title}
           </h1>
           <div className="text-gray-500 text-sm mb-6 flex items-center space-x-4">
             <span>
@@ -339,6 +355,20 @@ const SinglePostPage = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {!translatedTitle ? (
+            <TranslatePost
+              originalTitle={post.title}
+              originalContent={post.content}
+              onTranslate={handleTranslationComplete}
+            />
+          ) : (
+            <button
+              onClick={handleShowOriginal}
+              className="px-3 py-1 text-sm rounded-md border border-gray-300 hover:bg-gray-100"
+            >
+              Prikaži Original
+            </button>
+          )}
           {isSignedIn && (
             <button
               onClick={handleSaveToggle}
@@ -372,7 +402,7 @@ const SinglePostPage = () => {
 
       <div
         className="prose lg:prose-xl max-w-none mb-8"
-        dangerouslySetInnerHTML={{ __html: post.content }}
+        dangerouslySetInnerHTML={{ __html: translatedContent || post.content }}
       />
 
       <div className="flex items-center space-x-4 border-t border-b py-4 my-6">
