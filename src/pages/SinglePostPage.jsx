@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import CreateComment from "../components/CreateComment";
 import CommentSection from "../components/CommentSection";
+import TranslatePost from "../components/TranslatePost";
 
 const ThumbsUpIcon = () => (
   <svg
@@ -104,10 +105,17 @@ const SinglePostPage = () => {
   const [canManageContent, setCanManageContent] = useState(false);
   const [canDeletePost, setCanDeletePost] = useState(false);
 
+  const [translatedTitle, setTranslatedTitle] = useState(null);
+  const [translatedContent, setTranslatedContent] = useState(null);
+
+  const [isPinned, setIsPinned] = useState(false);
+
   useEffect(() => {
     const fetchPublicPostData = async () => {
       setLoading(true);
       setError(null);
+      setTranslatedTitle(null);
+      setTranslatedContent(null);
       try {
         const res = await fetch(`/api/public/posts/${slug}`);
         if (!res.ok) {
@@ -117,6 +125,7 @@ const SinglePostPage = () => {
         const data = await res.json();
         setPost(data);
         setVoteScore(parseInt(data.vote_score, 10) || 0);
+        setIsPinned(data.is_pinned);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -125,7 +134,7 @@ const SinglePostPage = () => {
     };
     fetchPublicPostData();
   }, [slug]);
-  
+
   // Oznacava post kao procitan
   useEffect(() => {
     // Samo ako je korisnik prijavljen
@@ -302,6 +311,45 @@ const SinglePostPage = () => {
     } catch (err) {
       alert(err.message);
     }
+  };
+
+  const handlePinToggle = async () => {
+    if (!user || user.username !== post.author_username) return;
+
+    const newPinnedState = !isPinned;
+    setIsPinned(newPinnedState);
+
+    try {
+      const token = await getToken();
+      const url = `/api/posts/${post.id}/${newPinnedState ? "pin" : "unpin"}`;
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        setIsPinned(!newPinnedState);
+        const errorData = await response.json();
+        alert(errorData.error || "Greška pri akciji.");
+      } else {
+        alert(
+          `Objava je uspešno ${newPinnedState ? "pinovana" : "odpinovana"}.`
+        );
+      }
+    } catch (err) {
+      setIsPinned(!newPinnedState);
+      alert("Došlo je do greške.");
+    }
+  };
+
+  const handleTranslationComplete = (title, content) => {
+    setTranslatedTitle(title);
+    setTranslatedContent(content);
+  };
+
+  const handleShowOriginal = () => {
+    setTranslatedTitle(null);
+    setTranslatedContent(null);
   };
 
   if (loading)
