@@ -429,12 +429,53 @@ const SinglePostPage = () => {
               <DeleteIcon />
             </button>
           )}
+          {isSignedIn && user?.username === post?.author_username && (
+            <button
+              onClick={handlePinToggle}
+              className={`p-2 rounded-full hover:bg-gray-200 transition-colors ${
+                isPinned ? "text-primary" : "text-gray-600"
+              }`}
+              title={isPinned ? "Odpinuj objavu" : "Pinuj na vrh profila"}
+            >
+              {isPinned ? (
+                // Ikonica za UNPIN
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-primary"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10.493,1.52a1,1,0,0,0-1.012,0L5.34,3.759a1,1,0,0,0-.54.89v5.09a1,1,0,0,0,1,1H8v5a1,1,0,0,0,2,0V10.74h2.2a1,1,0,0,0,1-1V4.649a1,1,0,0,0-.54-.89Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                // Ikona za PIN (obična)
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.493,1.52a1,1,0,0,0-1.012,0L5.34,3.759a1,1,0,0,0-.54.89v5.09a1,1,0,0,0,1,1H8v5a1,1,0,0,0,2,0V10.74h2.2a1,1,0,0,0,1-1V4.649a1,1,0,0,0-.54-.89Z"
+                  />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
       <div
         className="prose lg:prose-xl max-w-none mb-8"
-        dangerouslySetInnerHTML={{ __html: post.content }}
+        dangerouslySetInnerHTML={{ __html: translatedContent || post.content }}
       />
 
       <div className="flex items-center space-x-4 border-t border-b py-4 my-6">
@@ -493,7 +534,7 @@ const SinglePostPage = () => {
             <p className="text-gray-700">
               <Link
                 to="/sign-in"
-                className="text-orange-600 font-bold hover:underline"
+                className="text-primary-accent font-bold hover:underline"
               >
                 Prijavite se
               </Link>{" "}
