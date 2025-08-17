@@ -30,7 +30,7 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-primary">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md relative">
         {/* Back link to home page */}
         <Link
@@ -95,7 +95,7 @@ const AdminLoginPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2 px-4 bg-primary hover:bg-primary-accent text-white rounded-md font-semibold transition-colors disabled:bg-gray-400"
+              className="w-full py-2 px-4 bg-primary hover:bg-gray-700 text-white rounded-md font-semibold transition-colors disabled:bg-gray-400"
             >
               {isLoading ? "Prijavljivanje..." : "Prijavi se"}
             </button>
