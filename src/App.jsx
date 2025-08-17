@@ -107,6 +107,19 @@ const HomePage = () => {
       </div>
 
       <PostOfTheWeek />
+      <InfiniteScroll
+        dataLength={posts.length}
+        next={() => fetchPosts(page)}
+        hasMore={hasMore}
+        loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
+        endMessage={
+          <p className="text-center text-gray-400 mt-4">
+            <b>Učitali ste sve objave za date parametre.</b>
+          </p>
+        }
+      >
+        <PostList posts={posts} />
+      </InfiniteScroll>
     </div>
   );
 };
