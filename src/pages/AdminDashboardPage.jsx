@@ -180,4 +180,56 @@ const AdminDashboardPage = () => {
       alert(err.message);
     }
   };
+
+  const renderIssuesTable = () => (
+    <table className="min-w-full text-left text-textcolor">
+      <thead className="border-b border-border-main">
+        <tr>
+          <th className="px-4 py-2">ID</th>
+          <th className="px-4 py-2">Tip</th>
+          <th className="px-4 py-2">Opis</th>
+          <th className="px-4 py-2">Status</th>
+          <th className="px-4 py-2">Akcije</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.length > 0 ? (
+          data.map((issue) => (
+            <tr
+              key={issue.id}
+              className="border-b border-border-main hover:bg-background"
+            >
+              <td className="px-4 py-2">{issue.id}</td>
+              <td className="px-4 py-2 capitalize">
+                {issue.issue_type?.replace("_", " ") || "N/A"}
+              </td>
+              <td
+                className="px-4 py-2 max-w-sm truncate"
+                title={issue.description}
+              >
+                {issue.description}
+              </td>
+              <td className="px-4 py-2 capitalize">{issue.status}</td>
+              <td className="px-4 py-2">
+                {issue.id && (
+                  <Link
+                    to={`/admin/issues/${issue.id}`}
+                    className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                  >
+                    Detalji
+                  </Link>
+                )}
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5" className="text-center py-4">
+              Nema prijavljenih problema.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
 }
