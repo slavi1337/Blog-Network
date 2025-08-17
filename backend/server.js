@@ -761,13 +761,19 @@ app.get("/api/notifications", ClerkExpressWithAuth(), async (req, res) => {
                 n.id, n.type, n.is_read, n.created_at,
                 p.slug AS post_slug,
                 p.title AS post_title,
-                -- Korisnik koji je izazvao notifikaciju (autor posta ili komentara)
+                ri.description AS issue_description,
+                
                 CASE
-                    WHEN n.type = 'new_post_from_followed' THEN (SELECT u.username FROM posts po JOIN users u ON po.author_id = u.id WHERE po.id = n.related_entity_id)
-                    WHEN n.type = 'reply_to_comment' THEN (SELECT u.username FROM comments co JOIN users u ON co.user_id = u.id WHERE co.parent_comment_id = n.secondary_entity_id ORDER BY co.created_at DESC LIMIT 1)
+                    WHEN n.type = 'new_post_from_followed' 
+                        THEN (SELECT u.username FROM posts po JOIN users u ON po.author_id = u.id WHERE po.id = n.related_entity_id)
+                    WHEN n.type = 'reply_to_comment' 
+                        THEN (SELECT u.username FROM comments co JOIN users u ON co.user_id = u.id WHERE co.parent_comment_id = n.secondary_entity_id ORDER BY co.created_at DESC LIMIT 1)
+                    WHEN n.type = 'issue_status_change' 
+                        THEN 'Admin Tim'
                 END AS actor_username
             FROM notifications n
-            JOIN posts p ON n.related_entity_id = p.id
+            LEFT JOIN posts p ON n.related_entity_id = p.id AND n.type IN ('new_post_from_followed', 'reply_to_comment')
+            LEFT JOIN reported_issues ri ON n.related_entity_id = ri.id AND n.type = 'issue_status_change'
             WHERE n.recipient_id = $1 
             ORDER BY n.created_at DESC 
             LIMIT 30;
