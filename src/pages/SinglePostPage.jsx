@@ -333,7 +333,7 @@ const SinglePostPage = () => {
         alert(errorData.error || "Greška pri akciji.");
       } else {
         alert(
-          `Objava je uspešno ${newPinnedState ? "pinovana" : "odpinovana"}.`
+          `Objava je uspješno ${newPinnedState ? "pinovana" : "odpinovana"}.`
         );
       }
     } catch (err) {

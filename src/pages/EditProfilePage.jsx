@@ -90,7 +90,7 @@ const EditProfilePage = () => {
         throw new Error(errorData.error || "Greška pri čuvanju izmena.");
       }
 
-      setSuccessMessage("Vaša interesovanja su uspešno sačuvana!");
+      setSuccessMessage("Vaša interesovanja su uspješno sačuvana!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       setError(err.message);
