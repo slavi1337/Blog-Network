@@ -1,6 +1,18 @@
+import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 
 const PostList = ({ posts }) => {
+  const navigate = useNavigate();
+
+  const handleTagClick = useCallback(
+    (tag) => {
+      const params = new URLSearchParams();
+      params.append("tags", tag);
+      navigate(`/?${params.toString()}`);
+    },
+    [navigate]
+  );
   if (!posts || posts.length === 0) {
     return <p className="text-gray-600">Nema članaka za prikaz.</p>;
   }
@@ -54,6 +66,20 @@ const PostList = ({ posts }) => {
               Objavljeno: {new Date(post.created_at).toLocaleDateString()}
             </span>
           </div>
+          {/* TAGOVI */}
+          {post.tags && post.tags.trim() !== "" && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {post.tags.split(", ").map((tag, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleTagClick(tag)}
+                  className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs hover:bg-primary hover:text-white transition"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
