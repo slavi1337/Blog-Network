@@ -227,6 +227,7 @@ app.get("/api/public/search", async (req, res) => {
   GROUP BY p.id, u.username, c.name
   ${havingClause}
   ORDER BY p.created_at DESC
+  LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
 `;
 
   params.push(limit, offset);
