@@ -70,3 +70,24 @@ const ReadingHistoryPage = () => {
 };
 
 export default ReadingHistoryPage;
+
+const handleRemoveFromHistory = async (postIdToRemove) => {
+  
+  setPosts((currentPosts) =>
+    currentPosts.filter((post) => post.id !== postIdToRemove)
+  );
+
+  try {
+    const token = await getToken();
+    const response = await fetch(`/api/posts/${postIdToRemove}/history`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      console.error("Greška pri brisanju, osviježite stranicu.");
+    }
+  } catch (error) {
+    console.error("Greška:", error);
+  }
+};
