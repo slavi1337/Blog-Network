@@ -82,6 +82,12 @@ const CreateAdminForm = ({onAdminCreated}) => {
 };
 
 const AdminDashboardPage = () => {
+    const [activeTab, setActiveTab] = useState("issues");
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const fetchData = useCallback(
     async (tab) => {
       setLoading(true);
       setData([]);
