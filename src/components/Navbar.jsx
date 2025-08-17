@@ -27,6 +27,13 @@ const Navbar = () => {
       params.set("minDate", filters.minDate);
     if (filters.maxDateActive && filters.maxDate)
       params.set("maxDate", filters.maxDate);
+    if (filters.tags && Array.isArray(filters.tags)) {
+      filters.tags.forEach((tag) => {
+        if (tag.trim() !== "") {
+          params.append("tags", tag.trim());
+        }
+      });
+    }
 
     navigate(`/?${params.toString()}`);
   };
