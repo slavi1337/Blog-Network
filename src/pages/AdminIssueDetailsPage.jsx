@@ -41,6 +41,11 @@ const AdminIssueDetailsPage = () => {
       alert(err.message);
     }
   };
+
+  if (loading) return <div className="p-8">Učitavanje...</div>;
+  if (!issue) return <div className="p-8">Problem nije pronađen.</div>;
+
+  
 };
 
 export default AdminIssueDetailsPage;
