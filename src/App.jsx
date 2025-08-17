@@ -23,6 +23,9 @@ import FollowingPage from "./pages/FollowingPage";
 import FollowersPage from "./pages/FollowersPage";
 import ReportIssuePage from "./pages/ReportIssuePage";
 import DraftsPage from "./pages/DraftsPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminIssueDetailsPage from "./pages/AdminIssueDetailsPage";
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
@@ -146,6 +149,13 @@ const App = () => {
     <Routes>
       <Route path="/sign-in/*" element={<SignInPage />} />
       <Route path="/sign-up/*" element={<SignUpPage />} />
+
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+      <Route
+        path="/admin/issues/:issueId"
+        element={<AdminIssueDetailsPage />}
+      />
 
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
