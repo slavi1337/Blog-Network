@@ -109,6 +109,7 @@ const SinglePostPage = () => {
   const [translatedContent, setTranslatedContent] = useState(null);
 
   const [isPinned, setIsPinned] = useState(false);
+  const [copySuccess, setCopySuccess] = useState("");
 
   useEffect(() => {
     const fetchPublicPostData = async () => {
@@ -352,6 +353,21 @@ const SinglePostPage = () => {
     setTranslatedContent(null);
   };
 
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(
+      () => {
+        setCopySuccess("Link kopiran u clipboard!");
+        setTimeout(() => setCopySuccess(""), 2000);
+      },
+      (err) => {
+        console.error("Failed to copy: ", err);
+        setCopySuccess("Kopiranje nije uspelo.");
+        setTimeout(() => setCopySuccess(""), 2000);
+      }
+    );
+  };
+
   if (loading)
     return <div className="text-center p-10 font-bold">Učitavanje...</div>;
   if (error)
@@ -387,6 +403,31 @@ const SinglePostPage = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={handleShare}
+            className="p-2 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"
+            title="Podjeli objavu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+              />
+            </svg>
+          </button>
+          {copySuccess && (
+            <div className="absolute top-20 mt-2 center bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-md">
+              {copySuccess}
+            </div>
+          )}
           {!translatedTitle ? (
             <TranslatePost
               originalTitle={post.title}
