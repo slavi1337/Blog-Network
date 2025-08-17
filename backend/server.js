@@ -55,6 +55,32 @@ const getInternalUserId = async (clerkId) => {
   return result.rows.length > 0 ? result.rows[0].id : null;
 };
 
+app.get("/api/public/posts/featured", async (req, res) => {
+  try {
+    const query = `
+            SELECT 
+                p.id, p.title, p.slug, p.content, p.created_at,
+                u.username AS author_username,
+                c.name AS category_name
+            FROM posts p
+            JOIN users u ON p.author_id = u.id
+            JOIN categories c ON p.category_id = c.id
+            JOIN featured_post fp ON p.id = fp.post_id
+            WHERE fp.id = 1;
+        `;
+    const { rows } = await pool.query(query);
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Objava sedmice nije postavljena." });
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Greška pri dohvatanju objave sedmice:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 // --- API RUTA ZA KREIRANJE NOVOG POSTA ---
 app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
@@ -1691,5 +1717,9 @@ app.get(/^(?!\/api).*/, (req, res) => {
 
 app.listen(port, () => {
   console.log(`Backend server sluša na http://localhost:${port}`);
-  publishScheduledPosts();
+  console.log("Pokrećem periodičnu provjeru zakazanih objava svakih 5min...");
+  setInterval(() => {
+    publishScheduledPosts(pool);
+  }, 5 * 60 * 1000);
+  scheduleWeeklyJob(pool);
 });
