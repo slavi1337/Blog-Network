@@ -81,6 +81,8 @@ const ProfilePage = () => {
           }
 
           const data = await response.json();
+          console.log("Podaci stigli u ProfilePage:", data);
+          console.log("Prvi post u listi:", data.posts[0]);
           setProfileData(data);
           setIsFollowing(data.is_followed_by_viewer);
           setIsBlocked(data.is_blocked_by_viewer);
