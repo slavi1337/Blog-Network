@@ -242,6 +242,46 @@ const adminRouter = (pool) => {
     }
   });
 
+  // kreiranje novog administratorskog naloga
+  router.post("/admins", async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ error: "Korisničko ime i lozinka su obavezni." });
+    }
+
+    try {
+      const existingAdmin = await pool.query(
+        "SELECT id FROM admins WHERE username = $1",
+        [username]
+      );
+      if (existingAdmin.rowCount > 0) {
+        return res.status(409).json({
+          error: "Administrator sa tim korisničkim imenom već postoji.",
+        });
+      }
+
+      // hashovanje sifre
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+
+      const result = await pool.query(
+        "INSERT INTO admins (username, password_hash) VALUES ($1, $2) RETURNING id, username",
+        [username, passwordHash]
+      );
+
+      res.status(201).json({
+        message: "Novi administrator je uspješno kreiran.",
+        admin: result.rows[0],
+      });
+    } catch (error) {
+      console.error("Greška pri kreiranju admina:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
+
   return router;
 };
 
