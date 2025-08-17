@@ -16,6 +16,7 @@ const { scheduleWeeklyJob } = require("./jobs/blogOfTheWeekSelector");
 
 const postsRouter = require("./routes/posts");
 const usersRouter = require("./routes/users");
+const { getCensoredWords, containsCensoredWord } = require("./utils/censor");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -301,6 +302,13 @@ app.post("/api/comments", ClerkExpressWithAuth(), async (req, res) => {
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
   if (!postId || !content)
     return res.status(400).json({ error: "ID posta i sadržaj su obavezni." });
+
+  const badWords = await getCensoredWords(pool);
+  if (containsCensoredWord(content, badWords)) {
+    return res
+      .status(400)
+      .json({ error: "Vaš komentar sadrži nedozvoljene riječi." });
+  }
 
   try {
     const userId = await getInternalUserId(clerkId);
