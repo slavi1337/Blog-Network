@@ -33,4 +33,50 @@ const CreateAdminForm = ({onAdminCreated}) => {
         setIsSubmitting(false);
     }
   };
+
+  return (
+    <div className="mt-8 border-t pt-6">
+      <h3 className="text-lg font-semibold mb-4 text-textcolor">
+        Kreiraj Novog Administratora
+      </h3>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col md:flex-row gap-4 items-end"
+      >
+        <div className="flex-grow w-full md:w-auto">
+          <label className="block text-sm font-medium text-textcolor">
+            Korisničko ime
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full mt-1 p-2 border rounded bg-background text-textcolor"
+            required
+          />
+        </div>
+        <div className="flex-grow w-full md:w-auto">
+          <label className="block text-sm font-medium text-textcolor">
+            Lozinka
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full mt-1 p-2 border rounded bg-background text-textcolor"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full md:w-auto px-4 py-2 bg-primary-accent text-white rounded hover:opacity-90 disabled:bg-gray-400"
+        >
+          {isSubmitting ? "Kreiranje..." : "Kreiraj"}
+        </button>
+      </form>
+      {error && <p className="text-red-500 mt-2">{error}</p>}
+      {message && <p className="text-green-500 mt-2">{message}</p>}
+    </div>
+  );
 };
