@@ -286,4 +286,111 @@ const AdminDashboardPage = () => {
       </tbody>
     </table>
   );
+
+   const renderAdminsTable = () => (
+    <div>
+      <table className="min-w-full text-left text-textcolor">
+        <thead className="border-b border-border-main">
+          <tr>
+            <th className="px-4 py-2">ID</th>
+            <th className="px-4 py-2">Korisničko Ime</th>
+            <th className="px-4 py-2">Kreiran</th>
+            <th className="px-4 py-2">Akcije</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.length > 0 ? (
+            data.map((admin) => (
+              <tr
+                key={admin.id}
+                className="border-b border-border-main hover:bg-background"
+              >
+                <td className="px-4 py-2">{admin.id}</td>
+                <td className="px-4 py-2">{admin.username}</td>
+                <td className="px-4 py-2">
+                  {new Date(admin.created_at).toLocaleDateString()}
+                </td>
+                <td className="px-4 py-2">
+                  <button
+                    onClick={() => handleDeleteAdmin(admin.id)}
+                    className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                  >
+                    Obriši
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4" className="text-center py-4">
+                Nema administratora za prikaz.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <CreateAdminForm onAdminCreated={() => fetchData("admins")} />
+    </div>
+  );
+
+  return (
+    <div className="p-8 bg-background min-h-screen text-textcolor">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-primary hover:bg-primary-accent text-white rounded-md font-semibold"
+        >
+          Odjavi se
+        </button>
+      </div>
+
+      <div className="mb-4">
+        <nav className="flex space-x-2 p-1 bg-gray-200 rounded-lg">
+          <button
+            onClick={() => setActiveTab("issues")}
+            className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+              activeTab === "issues"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            Problemi
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+              activeTab === "users"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            Korisnici
+          </button>
+          <button
+            onClick={() => setActiveTab("admins")}
+            className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+              activeTab === "admins"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            Administratori
+          </button>
+        </nav>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md text-black">
+        {loading ? (
+          <p>Učitavanje...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            {activeTab === "issues" && renderIssuesTable()}
+            {activeTab === "users" && renderUsersTable()}
+            {activeTab === "admins" && renderAdminsTable()}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
