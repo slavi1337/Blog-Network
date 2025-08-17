@@ -12,6 +12,7 @@ const SearchBar = ({ onSearch }) => {
     maxDateActive: false,
     minDate: "",
     maxDate: "",
+    tags: "",
   });
 
   const handleInputChange = (e) => {
@@ -21,6 +22,14 @@ const SearchBar = ({ onSearch }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSearch(query, filters);
+    const processedFilters = {
+      ...filters,
+      tags: filters.tags
+        .split(" ")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0),
+    };
+    onSearch(query, processedFilters);
   };
 
   const toggleFilters = () => {
@@ -129,6 +138,19 @@ const SearchBar = ({ onSearch }) => {
                   className="px-2 py-1 border border-gray-300 rounded-md"
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col">
+              <label htmlFor="tags">Tagovi (razdvojeni razmakom)</label>
+              <input
+                type="text"
+                name="tags"
+                id="tags"
+                value={filters.tags}
+                onChange={handleFilterChange}
+                placeholder="npr. zabava, kuhinja, politika..."
+                className="px-2 py-1 border border-gray-300 rounded-md"
+              />
             </div>
           </div>
         </div>
