@@ -83,36 +83,58 @@ const CreateAdminForm = ({onAdminCreated}) => {
 
 const AdminDashboardPage = () => {
     const [activeTab, setActiveTab] = useState("issues");
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
-  const fetchData = useCallback(
-    async (tab) => {
-      setLoading(true);
-      setData([]);
-      try {
-        const response = await fetch(`/api/admin/${tab}`);
-        if (response.status === 401) return navigate("/admin/login");
-        if (!response.ok)
-          throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+    const fetchData = useCallback(
+        async (tab) => {
+        setLoading(true);
+        setData([]);
+        try {
+            const response = await fetch(`/api/admin/${tab}`);
+            if (response.status === 401) return navigate("/admin/login");
+            if (!response.ok)
+            throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
+            const result = await response.json();
+            setData(result);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+        },
+        [navigate]
+    );
+
+    useEffect(() => {
+        fetchData(activeTab);
+    }, [activeTab, fetchData]);
+
+    const handleLogout = async () => {
+        await fetch("/api/admin/logout", { method: "POST" });
+        navigate("/admin/login");
+    };
+
+    const handleDeleteUser = async (userId) => {
+    if (
+      !window.confirm(
+        `Da li ste APSOLUTNO sigurni da želite da obrišete ovog korisnika i SVE njegove objave, komentare i interakcije? Ova akcija je nepovratna.`
+      )
+    )
+      return;
+    setData((currentData) => currentData.filter((item) => item.id !== userId));
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        alert("Greška pri brisanju korisnika.");
+        fetchData("users");
       }
-    },
-    [navigate]
-  );
-
-  useEffect(() => {
-    fetchData(activeTab);
-  }, [activeTab, fetchData]);
-
-  const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
-    navigate("/admin/login");
+    } catch (error) {
+      alert("Greška pri brisanju korisnika.");
+      fetchData("users");
+    }
   };
 }
