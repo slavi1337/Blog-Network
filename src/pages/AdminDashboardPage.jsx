@@ -82,5 +82,31 @@ const CreateAdminForm = ({onAdminCreated}) => {
 };
 
 const AdminDashboardPage = () => {
-    
+    async (tab) => {
+      setLoading(true);
+      setData([]);
+      try {
+        const response = await fetch(`/api/admin/${tab}`);
+        if (response.status === 401) return navigate("/admin/login");
+        if (!response.ok)
+          throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    fetchData(activeTab);
+  }, [activeTab, fetchData]);
+
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    navigate("/admin/login");
+  };
 }
