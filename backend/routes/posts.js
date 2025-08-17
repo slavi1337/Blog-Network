@@ -1,5 +1,6 @@
 const express = require("express");
 const { ClerkExpressWithAuth } = require("@clerk/clerk-sdk-node");
+const { getCensoredWords, containsCensoredWord } = require("../utils/censor");
 
 const postsRouter = (pool, getInternalUserId) => {
   const router = express.Router();
@@ -14,6 +15,16 @@ const postsRouter = (pool, getInternalUserId) => {
       return res
         .status(400)
         .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
+    }
+
+    const badWords = await getCensoredWords(pool);
+    if (
+      containsCensoredWord(title, badWords) ||
+      containsCensoredWord(content, badWords)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Vaša objava sadrži nedozvoljene riječi." });
     }
 
     const finalStatus =
@@ -96,6 +107,16 @@ const postsRouter = (pool, getInternalUserId) => {
       return res
         .status(400)
         .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
+    }
+
+    const badWords = await getCensoredWords(pool);
+    if (
+      containsCensoredWord(title, badWords) ||
+      containsCensoredWord(content, badWords)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Vaša objava sadrži nedozvoljene riječi." });
     }
 
     const finalStatus =
