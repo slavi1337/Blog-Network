@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { Link } from "react-router-dom"; 
+import { Link } from "react-router-dom";
 
 const ReadingHistoryPage = () => {
   const [posts, setPosts] = useState([]);
@@ -26,9 +26,7 @@ const ReadingHistoryPage = () => {
     fetchHistory();
   }, [getToken]);
 
-  
   const handleRemoveFromHistory = async (postIdToRemove) => {
-    
     setPosts((currentPosts) =>
       currentPosts.filter((post) => post.id !== postIdToRemove)
     );
@@ -41,8 +39,6 @@ const ReadingHistoryPage = () => {
       });
 
       if (!response.ok) {
-        // Ako ne uspe, vrati podatke (mada je ovo retko potrebno)
-        // U praksi, osvežavanje stranice bi rešilo problem
         console.error("Greška pri brisanju, osviježite stranicu.");
       }
     } catch (error) {

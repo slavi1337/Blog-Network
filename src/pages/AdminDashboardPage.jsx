@@ -138,14 +138,14 @@ const CensoredWordsManager = () => {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4 text-textcolor">
-        Upravljanje Cenzurisanim Rečima
+        Upravljanje Cenzurisanim riječima
       </h2>
       <form onSubmit={handleAddWord} className="flex gap-2 mb-4">
         <input
           type="text"
           value={newWord}
           onChange={(e) => setNewWord(e.target.value)}
-          placeholder="Dodaj novu reč..."
+          placeholder="Dodaj novu riječ..."
           className="flex-grow p-2 border border-border-main rounded bg-background text-textcolor"
         />
         <button
