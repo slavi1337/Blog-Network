@@ -111,6 +111,34 @@ const adminRouter = (pool) => {
     }
   });
 
+  // DOHVATANJE SVIH KORISNIKA (BEZ ADMINA)
+  router.get("/users", async (req, res) => {
+    try {
+      const { rows } = await pool.query(
+        "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC"
+      );
+      res.status(200).json(rows);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "Greška na serveru pri dohvatanju korisnika." });
+    }
+  });
+
+  // DOHVATANJE SVIH ADMINA
+  router.get("/admins", async (req, res) => {
+    try {
+      const { rows } = await pool.query(
+        "SELECT id, username, created_at FROM admins ORDER BY created_at DESC"
+      );
+      res.status(200).json(rows);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "Greška na serveru pri dohvatanju administratora." });
+    }
+  });
+
   return router;
 };
 
