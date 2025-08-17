@@ -108,6 +108,8 @@ const SinglePostPage = () => {
   const [translatedTitle, setTranslatedTitle] = useState(null);
   const [translatedContent, setTranslatedContent] = useState(null);
 
+  const [isPinned, setIsPinned] = useState(false);
+
   useEffect(() => {
     const fetchPublicPostData = async () => {
       setLoading(true);
@@ -123,6 +125,7 @@ const SinglePostPage = () => {
         const data = await res.json();
         setPost(data);
         setVoteScore(parseInt(data.vote_score, 10) || 0);
+        setIsPinned(data.is_pinned);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -310,6 +313,35 @@ const SinglePostPage = () => {
     }
   };
 
+  const handlePinToggle = async () => {
+    if (!user || user.username !== post.author_username) return;
+
+    const newPinnedState = !isPinned;
+    setIsPinned(newPinnedState);
+
+    try {
+      const token = await getToken();
+      const url = `/api/posts/${post.id}/${newPinnedState ? "pin" : "unpin"}`;
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        setIsPinned(!newPinnedState);
+        const errorData = await response.json();
+        alert(errorData.error || "Greška pri akciji.");
+      } else {
+        alert(
+          `Objava je uspešno ${newPinnedState ? "pinovana" : "odpinovana"}.`
+        );
+      }
+    } catch (err) {
+      setIsPinned(!newPinnedState);
+      alert("Došlo je do greške.");
+    }
+  };
+
   const handleTranslationComplete = (title, content) => {
     setTranslatedTitle(title);
     setTranslatedContent(content);
@@ -395,6 +427,47 @@ const SinglePostPage = () => {
               title="Obriši objavu"
             >
               <DeleteIcon />
+            </button>
+          )}
+          {isSignedIn && user?.username === post?.author_username && (
+            <button
+              onClick={handlePinToggle}
+              className={`p-2 rounded-full hover:bg-gray-200 transition-colors ${
+                isPinned ? "text-primary" : "text-gray-600"
+              }`}
+              title={isPinned ? "Odpinuj objavu" : "Pinuj na vrh profila"}
+            >
+              {isPinned ? (
+                // Ikonica za UNPIN
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-primary"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10.493,1.52a1,1,0,0,0-1.012,0L5.34,3.759a1,1,0,0,0-.54.89v5.09a1,1,0,0,0,1,1H8v5a1,1,0,0,0,2,0V10.74h2.2a1,1,0,0,0,1-1V4.649a1,1,0,0,0-.54-.89Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                // Ikona za PIN (obična)
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.493,1.52a1,1,0,0,0-1.012,0L5.34,3.759a1,1,0,0,0-.54.89v5.09a1,1,0,0,0,1,1H8v5a1,1,0,0,0,2,0V10.74h2.2a1,1,0,0,0,1-1V4.649a1,1,0,0,0-.54-.89Z"
+                  />
+                </svg>
+              )}
             </button>
           )}
         </div>
