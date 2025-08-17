@@ -36,7 +36,7 @@ const SidePanel = () => {
                 key={link.to}
                 to={link.to}
                 onClick={closePanel}
-                className="text-textcolor text-lg font-semibold py-2 px-3 rounded-md hover:bg-primary hover:text-white transition-colors"
+                className="text-textcolor text-lg font-semibold py-2 px-3 rounded-md hover:bg-gray-700 hover:text-white transition-colors"
               >
                 {link.text}
               </Link>
@@ -46,7 +46,7 @@ const SidePanel = () => {
             <Link
               to="/admin/login"
               onClick={closePanel}
-              className="text-textcolor text-md font-semibold hover:text-primary-accent transition-colors"
+              className="text-textcolor text-lg font-semibold py-2 px-3 rounded-md hover:bg-gray-700 hover:text-white transition-colors"
             >
               Admin Panel
             </Link>
