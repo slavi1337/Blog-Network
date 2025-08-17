@@ -6,6 +6,7 @@ const bodyParser = require("body-parser");
 const { ClerkExpressWithAuth, clerkClient } = require("@clerk/clerk-sdk-node");
 const path = require("path");
 const session = require("express-session");
+const ImageKit = require("imagekit");
 
 const adminRoutes = require("./routes/admin");
 
@@ -25,6 +26,12 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL nije definisan u .env fajlu");
 }
 
+const imagekit = new ImageKit({
+  publicKey: process.env.VITE_IK_PUBLIC_KEY,
+  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+  urlEndpoint: process.env.VITE_IK_URL_ENDPOINT,
+});
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -34,7 +41,9 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-app.use(express.json());
+// dodana max velicina za server
+app.use(express.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(
   session({
@@ -690,6 +699,11 @@ app.post("/api/translate", express.json(), async (req, res) => {
       .status(500)
       .json({ error: "Usluga za prevođenje trenutno nije dostupna." });
   }
+});
+
+app.get("/api/upload-auth", (req, res) => {
+  const authenticationParameters = imagekit.getAuthenticationParameters();
+  res.json(authenticationParameters);
 });
 
 app.use(express.static(path.join(__dirname, "../dist")));
