@@ -10,6 +10,8 @@ const postsRouter = (pool, getInternalUserId) => {
     const clerkId = req.auth.userId;
     const { title, categoryId, content, tags, status, publishAt } = req.body;
 
+    const MAX_POSTS_PER_DAY = 5;
+
     if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
     if (!title || !content || !categoryId) {
       return res
@@ -18,6 +20,21 @@ const postsRouter = (pool, getInternalUserId) => {
     }
 
     const badWords = await getCensoredWords(pool);
+    const MAX_IMAGES = 3;
+    const MAX_VIDEOS = 3;
+    const imageCount = (content.match(/<img/g) || []).length;
+    const videoCount = (content.match(/<iframe/g) || []).length;
+
+    if (imageCount > MAX_IMAGES) {
+      return res
+        .status(400)
+        .json({ error: `Dozvoljeno je najviše ${MAX_IMAGES} slika.` });
+    }
+    if (videoCount > MAX_VIDEOS) {
+      return res
+        .status(400)
+        .json({ error: `Dozvoljeno je najviše ${MAX_VIDEOS} videa.` });
+    }
     if (
       containsCensoredWord(title, badWords) ||
       containsCensoredWord(content, badWords)
@@ -38,6 +55,19 @@ const postsRouter = (pool, getInternalUserId) => {
         return res
           .status(404)
           .json({ error: "Korisnik nije pronađen u bazi." });
+
+      const postCountResult = await pool.query(
+        `SELECT COUNT(*) FROM posts 
+             WHERE author_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'`,
+        [authorId]
+      );
+      const postCountToday = parseInt(postCountResult.rows[0].count, 10);
+
+      if (postCountToday >= MAX_POSTS_PER_DAY) {
+        return res.status(429).json({
+          error: `Dostigli ste dnevni limit od ${MAX_POSTS_PER_DAY} objava. Pokušajte ponovo sutra.`,
+        });
+      }
 
       const slugBase = title
         .toLowerCase()
@@ -110,6 +140,21 @@ const postsRouter = (pool, getInternalUserId) => {
     }
 
     const badWords = await getCensoredWords(pool);
+    const MAX_IMAGES = 3;
+    const MAX_VIDEOS = 3;
+    const imageCount = (content.match(/<img/g) || []).length;
+    const videoCount = (content.match(/<iframe/g) || []).length;
+
+    if (imageCount > MAX_IMAGES) {
+      return res
+        .status(400)
+        .json({ error: `Dozvoljeno je najviše ${MAX_IMAGES} slika.` });
+    }
+    if (videoCount > MAX_VIDEOS) {
+      return res
+        .status(400)
+        .json({ error: `Dozvoljeno je najviše ${MAX_VIDEOS} videa.` });
+    }
     if (
       containsCensoredWord(title, badWords) ||
       containsCensoredWord(content, badWords)
