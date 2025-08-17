@@ -365,14 +365,14 @@ const SinglePostPage = () => {
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <h1 className="text-4xl font-extrabold mb-2 text-gray-900">
-            {post.title}
+            {translatedTitle || post.title}
           </h1>
           <div className="text-gray-500 text-sm mb-6 flex items-center space-x-4">
             <span>
               Autor:{" "}
               <Link
                 to={`/profile/${post.author_username}`}
-                className="font-semibold hover:text-orange-600"
+                className="font-semibold hover:text-primary-accent"
               >
                 {post.author_username}
               </Link>
@@ -387,10 +387,24 @@ const SinglePostPage = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {!translatedTitle ? (
+            <TranslatePost
+              originalTitle={post.title}
+              originalContent={post.content}
+              onTranslate={handleTranslationComplete}
+            />
+          ) : (
+            <button
+              onClick={handleShowOriginal}
+              className="px-3 py-1 text-sm rounded-md border border-gray-300 hover:bg-gray-100"
+            >
+              Prikaži Original
+            </button>
+          )}
           {isSignedIn && (
             <button
               onClick={handleSaveToggle}
-              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-primary-accent transition-colors"
               title={isSaved ? "Ukloni iz sačuvanih" : "Sačuvaj za kasnije"}
             >
               <BookmarkIcon saved={isSaved} />
@@ -400,7 +414,7 @@ const SinglePostPage = () => {
           {isSignedIn && user?.username === post?.author_username && (
             <Link
               to={`/edit-post/${post.slug}`}
-              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-orange-600 transition-colors"
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-primary-accent transition-colors"
               title="Uredi objavu"
             >
               <EditIcon />
