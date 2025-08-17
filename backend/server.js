@@ -137,6 +137,7 @@ app.get("/api/public/search", async (req, res) => {
   const maxLikes = parseInt(req.query.maxLikes);
   const minDate = req.query.minDate;
   const maxDate = req.query.maxDate;
+  const tags = req.query.tags;
 
   const params = [];
   const whereClauses = ["p.status = 'published'"];
@@ -162,6 +163,26 @@ app.get("/api/public/search", async (req, res) => {
     paramIndex++;
   }
 
+  let joinTagTables = "";
+  let tagWhere = "";
+
+  if (
+    tags &&
+    ((typeof tags === "string" && tags.length > 0) ||
+      (Array.isArray(tags) && tags.length > 0))
+  ) {
+    const tagsArray = typeof tags === "string" ? [tags] : tags;
+
+    joinTagTables = `
+      JOIN post_tags pt ON pt.post_id = p.id
+      JOIN tags t ON t.id = pt.tag_id
+    `;
+
+    whereClauses.push(`t.name = ANY($${paramIndex}::text[])`);
+    params.push(tagsArray);
+    paramIndex++;
+  }
+
   const whereClause =
     whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
@@ -178,6 +199,10 @@ app.get("/api/public/search", async (req, res) => {
     paramIndex++;
   }
 
+  if (tags && Array.isArray(tags) && tags.length > 0) {
+    havingClauses.push(`COUNT(DISTINCT t.name) = ${tags.length}`);
+  }
+
   const havingClause =
     havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : "";
 
@@ -191,6 +216,7 @@ app.get("/api/public/search", async (req, res) => {
     JOIN users u ON p.author_id = u.id
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN post_votes v ON v.post_id = p.id
+    ${joinTagTables}
     ${whereClause}
     GROUP BY p.id, u.username, c.name
     ${havingClause}
@@ -213,6 +239,7 @@ app.get("/api/public/search", async (req, res) => {
         JOIN users u ON p.author_id = u.id
         JOIN categories c ON p.category_id = c.id
         LEFT JOIN post_votes v ON v.post_id = p.id
+        ${joinTagTables}
         ${whereClause}
         GROUP BY p.id, u.username, c.name
         ${havingClause}
