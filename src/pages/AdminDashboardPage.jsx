@@ -80,3 +80,7 @@ const CreateAdminForm = ({onAdminCreated}) => {
     </div>
   );
 };
+
+const AdminDashboardPage = () => {
+    
+}
