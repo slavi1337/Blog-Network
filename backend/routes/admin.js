@@ -168,6 +168,54 @@ const adminRouter = (pool) => {
     }
   });
 
+  // BRISANJE KORISNICKOG NALOGA
+  router.delete("/users/:userId", async (req, res) => {
+    const { userId } = req.params;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // trazenje clerkida za brisanje globalno
+      const userResult = await client.query(
+        "SELECT clerk_id FROM users WHERE id = $1",
+        [userId]
+      );
+      if (userResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res
+          .status(404)
+          .json({ error: "Korisnik nije pronađen u lokalnoj bazi." });
+      }
+      const clerkId = userResult.rows[0].clerk_id;
+
+      // brisanje korisnika iz nase baze i svih njegovih objava/kom
+      await client.query("DELETE FROM users WHERE id = $1", [userId]);
+
+      // brisanje sa clerka
+      if (clerkId) {
+        await clerkClient.users.deleteUser(clerkId);
+      }
+
+      await client.query("COMMIT");
+      res.status(200).json({
+        message: "Korisnik je uspješno obrisan iz baze i sa Clerk-a.",
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Greška pri brisanju korisnika:", error);
+      if (error.status === 404) {
+        res.status(404).json({
+          error:
+            "Korisnik nije pronađen na Clerk-u, ali je obrisan iz lokalne baze.",
+        });
+      } else {
+        res.status(500).json({ error: "Greška na serveru." });
+      }
+    } finally {
+      client.release();
+    }
+  });
+
   return router;
 };
 
