@@ -232,4 +232,58 @@ const AdminDashboardPage = () => {
       </tbody>
     </table>
   );
+
+  const renderUsersTable = () => (
+    <table className="min-w-full text-left text-textcolor">
+      <thead className="border-b border-border-main">
+        <tr>
+          <th className="px-4 py-2">ID</th>
+          <th className="px-4 py-2">Korisničko Ime</th>
+          <th className="px-4 py-2">Email</th>
+          <th className="px-4 py-2">Uloga</th>
+          <th className="px-4 py-2">Akcije</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.length > 0 ? (
+          data.map((user) => (
+            <tr
+              key={user.id}
+              className="border-b border-border-main hover:bg-background"
+            >
+              <td className="px-4 py-2">{user.id}</td>
+              <td className="px-4 py-2">{user.username}</td>
+              <td className="px-4 py-2">{user.email}</td>
+              <td className="px-4 py-2">
+                <select
+                  value={user.role}
+                  onChange={(e) =>
+                    handleUpdateUserRole(user.id, e.target.value)
+                  }
+                  className="p-1 border rounded bg-background text-textcolor"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="moderator">Moderator</option>
+                </select>
+              </td>
+              <td className="px-4 py-2">
+                <button
+                  onClick={() => handleDeleteUser(user.id)}
+                  className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                >
+                  Obriši Korisnika
+                </button>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5" className="text-center py-4">
+              Nema korisnika za prikaz.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
 }
