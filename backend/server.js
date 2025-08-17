@@ -11,6 +11,9 @@ const adminRoutes = require("./routes/admin");
 
 const { translate } = require("@vitalets/google-translate-api");
 
+const { publishScheduledPosts } = require("./jobs/postScheduler");
+const { scheduleWeeklyJob } = require("./jobs/blogOfTheWeekSelector");
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -43,56 +46,6 @@ app.use(
   })
 );
 app.use("/api/admin", adminRoutes(pool));
-
-const publishScheduledPosts = async () => {
-  console.log("Provera zakazanih objava...");
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    const { rows: postsToPublish } = await client.query(
-      "SELECT id, author_id FROM posts WHERE status = 'scheduled' AND publish_at <= NOW()"
-    );
-
-    if (postsToPublish.length > 0) {
-      const postIds = postsToPublish.map((p) => p.id);
-      console.log(`Objavljujem ${postIds.length} postova:`, postIds);
-
-      await client.query(
-        "UPDATE posts SET status = 'published', publish_at = NULL WHERE id = ANY($1::int[])",
-        [postIds]
-      );
-
-      // Slanje notifikacija za sve novobjavljene postove
-      for (const post of postsToPublish) {
-        const followersRes = await client.query(
-          `SELECT follower_id FROM followers WHERE followed_id = $1 AND notifications_enabled = TRUE`,
-          [post.author_id]
-        );
-        if (followersRes.rowCount > 0) {
-          const followerIds = followersRes.rows.map((r) => r.follower_id);
-          const notificationParams = followerIds.flatMap((id) => [
-            id,
-            "new_post_from_followed",
-            post.id,
-          ]);
-          const valuePlaceholders = followerIds
-            .map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`)
-            .join(",");
-          const notificationQuery = `INSERT INTO notifications (recipient_id, type, related_entity_id) VALUES ${valuePlaceholders}`;
-          await client.query(notificationQuery, notificationParams);
-        }
-      }
-    }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("Greška pri automatskom objavljivanju postova:", error);
-  } finally {
-    client.release();
-    setTimeout(publishScheduledPosts, 5 * 60 * 1000); //za 5 min ponovo
-  }
-};
 
 const getInternalUserId = async (clerkId) => {
   if (!clerkId) return null;
