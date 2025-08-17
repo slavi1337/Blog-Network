@@ -139,6 +139,35 @@ const adminRouter = (pool) => {
     }
   });
 
+  // PROMJENA ULOGE KORISNIKA (STANDARD<->MODERATOR)
+  router.put("/users/:userId/role", async (req, res) => {
+    const { userId } = req.params;
+    const { newRole } = req.body;
+
+    if (newRole !== "standard" && newRole !== "moderator") {
+      return res.status(400).json({ error: "Nevažeća uloga." });
+    }
+
+    try {
+      const result = await pool.query(
+        "UPDATE users SET role = $1 WHERE id = $2 RETURNING id, role",
+        [newRole, userId]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      }
+
+      res.status(200).json({
+        message: `Uloga korisnika je uspješno promjenjena u "${newRole}".`,
+        updatedUser: result.rows[0],
+      });
+    } catch (error) {
+      console.error("Greška pri promjeni uloge korisnika:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
+
   return router;
 };
 
