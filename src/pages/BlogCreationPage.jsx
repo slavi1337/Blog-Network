@@ -166,6 +166,57 @@ const BlogCreationPage = () => {
       }
     };
   };
+
+  const videoHandler = () => {
+    if (!quillRef.current) return;
+    const quill = quillRef.current.getEditor();
+    const range = quill.getSelection(true);
+
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "video/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      setIsUploading(true);
+      setError(null);
+
+      try {
+        const authResponse = await fetch("/api/upload-auth");
+        const authParams = await authResponse.json();
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileName", file.name);
+        formData.append("publicKey", import.meta.env.VITE_IK_PUBLIC_KEY);
+        formData.append("signature", authParams.signature);
+        formData.append("expire", authParams.expire);
+        formData.append("token", authParams.token);
+
+        const uploadResponse = await fetch(
+          "https://upload.imagekit.io/api/v1/files/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok)
+          throw new Error(uploadResult.message || "Upload videa nije uspio.");
+
+        quill.insertEmbed(range.index, "video", uploadResult.url);
+      } catch (uploadError) {
+        setError(`Greška pri uploadu videa: ${uploadError.message}`);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+  };
+
   const {
     isListening,
     transcript,
