@@ -37,6 +37,7 @@ const HomePage = () => {
   const maxLikes = searchParams.get("maxLikes") || "";
   const minDate = searchParams.get("minDate") || "";
   const maxDate = searchParams.get("maxDate") || "";
+  const tags = searchParams.getAll("tags");
 
   const fetchPosts = async (pageToFetch) => {
     try {
@@ -47,6 +48,9 @@ const HomePage = () => {
       if (maxLikes) params.append("maxLikes", maxLikes);
       if (minDate) params.append("minDate", minDate);
       if (maxDate) params.append("maxDate", maxDate);
+      if (tags.length > 0) {
+        tags.forEach((tag) => params.append("tags", tag));
+      }
 
       params.append("page", pageToFetch);
 
@@ -70,7 +74,7 @@ const HomePage = () => {
     setPage(1);
     setPosts([]);
     fetchPosts(1);
-  }, [searchQuery, minLikes, maxLikes, minDate, maxDate]);
+  }, [searchQuery, minLikes, maxLikes, minDate, maxDate, JSON.stringify(tags)]);
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
