@@ -307,6 +307,47 @@ const adminRouter = (pool) => {
     }
   });
 
+  //cenzurisane rijeci
+  router.get("/censored-words", async (req, res) => {
+    try {
+      const { rows } = await pool.query(
+        "SELECT * FROM censored_words ORDER BY word"
+      );
+      res.status(200).json(rows);
+    } catch (error) {
+      res.status(500).send();
+    }
+  });
+
+  router.post("/censored-words", async (req, res) => {
+    const { word } = req.body;
+    const adminId = req.session.adminId;
+    if (!word) return res.status(400).json({ error: "Riječ je obavezna." });
+
+    try {
+      const result = await pool.query(
+        "INSERT INTO censored_words (word, added_by_admin_id) VALUES ($1, $2) RETURNING *",
+        [word.toLowerCase(), adminId]
+      );
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({ error: "Ta riječ već postoji u listi." });
+      }
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
+
+  router.delete("/censored-words/:wordId", async (req, res) => {
+    const { wordId } = req.params;
+    try {
+      await pool.query("DELETE FROM censored_words WHERE id = $1", [wordId]);
+      res.status(200).json({ message: "Riječ uspješno obrisana." });
+    } catch (error) {
+      res.status(500).send();
+    }
+  });
+
   return router;
 };
 
