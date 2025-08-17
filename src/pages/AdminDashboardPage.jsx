@@ -2,40 +2,40 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 const CreateAdminForm = ({ onAdminCreated }) => {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [message, setMessage] = useState("");
-    const [error, setError] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        setMessage("");
-        setError("");
-        try {
-        const response = await fetch("/api/admin/admins", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        setMessage(data.message);
-        setUsername("");
-        setPassword("");
-        if (onAdminCreated) {
-            onAdminCreated();
-        }
-        } catch (err) {
-        setError(err.message);
-        } finally {
-        setIsSubmitting(false);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setMessage("");
+    setError("");
+    try {
+      const response = await fetch("/api/admin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setMessage(data.message);
+      setUsername("");
+      setPassword("");
+      if (onAdminCreated) {
+        onAdminCreated();
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="mt-8 border-t pt-6">
+    <div className="mt-8 border-t border-border-main pt-6">
       <h3 className="text-lg font-semibold mb-4 text-textcolor">
         Kreiraj Novog Administratora
       </h3>
@@ -51,7 +51,7 @@ const CreateAdminForm = ({ onAdminCreated }) => {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full mt-1 p-2 border rounded bg-background text-textcolor"
+            className="w-full mt-1 p-2 border border-border-main rounded bg-background text-textcolor"
             required
           />
         </div>
@@ -63,14 +63,14 @@ const CreateAdminForm = ({ onAdminCreated }) => {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full mt-1 p-2 border rounded bg-background text-textcolor"
+            className="w-full mt-1 p-2 border border-border-main rounded bg-background text-textcolor"
             required
           />
         </div>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full md:w-auto px-4 py-2 bg-primary-accent text-white rounded hover:opacity-90 disabled:bg-gray-400"
+          className="w-full md:w-auto px-4 py-2 bg-gray-600 text-white rounded hover:gray-700 disabled:bg-gray-400"
         >
           {isSubmitting ? "Kreiranje..." : "Kreiraj"}
         </button>
@@ -81,42 +81,139 @@ const CreateAdminForm = ({ onAdminCreated }) => {
   );
 };
 
+const CensoredWordsManager = () => {
+  const [words, setWords] = useState([]);
+  const [newWord, setNewWord] = useState("");
+  const [error, setError] = useState("");
+
+  const fetchWords = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/censored-words");
+      if (res.ok) {
+        const data = await res.json();
+        setWords(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWords();
+  }, [fetchWords]);
+
+  const handleAddWord = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!newWord.trim()) return;
+
+    try {
+      const res = await fetch("/api/admin/censored-words", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: newWord }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewWord("");
+        fetchWords();
+      } else {
+        setError(data.error || "Greška pri dodavanju.");
+      }
+    } catch (err) {
+      setError("Došlo je do greške na serveru.");
+    }
+  };
+
+  const handleDeleteWord = async (wordId) => {
+    if (!window.confirm("Da li ste sigurni?")) return;
+    try {
+      await fetch(`/api/admin/censored-words/${wordId}`, { method: "DELETE" });
+      fetchWords();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-4 text-textcolor">
+        Upravljanje Cenzurisanim Rečima
+      </h2>
+      <form onSubmit={handleAddWord} className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newWord}
+          onChange={(e) => setNewWord(e.target.value)}
+          placeholder="Dodaj novu reč..."
+          className="flex-grow p-2 border border-border-main rounded bg-background text-textcolor"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
+          Dodaj
+        </button>
+      </form>
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      <div className="space-y-2">
+        {words.map((w) => (
+          <div
+            key={w.id}
+            className="flex justify-between items-center bg-background p-2 rounded"
+          >
+            <span className="text-textcolor">{w.word}</span>
+            <button
+              onClick={() => handleDeleteWord(w.id)}
+              className="text-red-500 hover:text-red-700"
+            >
+              Obriši
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboardPage = () => {
-    const [activeTab, setActiveTab] = useState("issues");
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("issues");
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-    const fetchData = useCallback(
-        async (tab) => {
+  const fetchData = useCallback(
+    async (tab) => {
+      if (tab !== "admins" && tab !== "censored") {
         setLoading(true);
-        setData([]);
-        try {
-            const response = await fetch(`/api/admin/${tab}`);
-            if (response.status === 401) return navigate("/admin/login");
-            if (!response.ok)
-            throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
-            const result = await response.json();
-            setData(result);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-        },
-        [navigate]
-    );
+      }
+      setData([]);
+      try {
+        const response = await fetch(`/api/admin/${tab}`);
+        if (response.status === 401) return navigate("/admin/login");
+        if (!response.ok)
+          throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [navigate]
+  );
 
-    useEffect(() => {
-        fetchData(activeTab);
-    }, [activeTab, fetchData]);
+  useEffect(() => {
+    fetchData(activeTab);
+  }, [activeTab, fetchData]);
 
-    const handleLogout = async () => {
-        await fetch("/api/admin/logout", { method: "POST" });
-        navigate("/admin/login");
-    };
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    navigate("/admin/login");
+  };
 
-    const handleDeleteUser = async (userId) => {
+  const handleDeleteUser = async (userId) => {
     if (
       !window.confirm(
         `Da li ste APSOLUTNO sigurni da želite da obrišete ovog korisnika i SVE njegove objave, komentare i interakcije? Ova akcija je nepovratna.`
@@ -287,7 +384,7 @@ const AdminDashboardPage = () => {
     </table>
   );
 
-   const renderAdminsTable = () => (
+  const renderAdminsTable = () => (
     <div>
       <table className="min-w-full text-left text-textcolor">
         <thead className="border-b border-border-main">
@@ -339,7 +436,7 @@ const AdminDashboardPage = () => {
         <h1 className="text-3xl font-bold">Admin Panel</h1>
         <button
           onClick={handleLogout}
-          className="px-4 py-2 bg-primary hover:bg-primary-accent text-white rounded-md font-semibold"
+          className="px-4 py-2 bg-primary hover:bg-gray-700 text-white rounded-md font-semibold"
         >
           Odjavi se
         </button>
@@ -377,22 +474,33 @@ const AdminDashboardPage = () => {
           >
             Administratori
           </button>
+          <button
+            onClick={() => setActiveTab("censored")}
+            className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+              activeTab === "censored"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            Cenzura
+          </button>
         </nav>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md text-black">
-        {loading ? (
-          <p>Učitavanje...</p>
+      <div className="bg-primary p-6 rounded-lg shadow-md">
+        {loading && activeTab !== "censored" && activeTab !== "admins" ? (
+          <p className="text-textcolor">Učitavanje...</p>
         ) : (
           <div className="overflow-x-auto">
             {activeTab === "issues" && renderIssuesTable()}
             {activeTab === "users" && renderUsersTable()}
             {activeTab === "admins" && renderAdminsTable()}
+            {activeTab === "censored" && <CensoredWordsManager />}
           </div>
         )}
       </div>
     </div>
   );
-}
+};
 
 export default AdminDashboardPage;
