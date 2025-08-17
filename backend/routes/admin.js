@@ -216,6 +216,32 @@ const adminRouter = (pool) => {
     }
   });
 
+  //brisanje adminskog naloga
+  router.delete("/admins/:adminIdToDelete", async (req, res) => {
+    const { adminIdToDelete } = req.params;
+    const currentAdminId = req.session.adminId;
+
+    // admin ne moze samog sb obrisati
+    if (Number(adminIdToDelete) === currentAdminId) {
+      return res
+        .status(403)
+        .json({ error: "Ne možete obrisati sopstveni nalog." });
+    }
+
+    try {
+      const result = await pool.query("DELETE FROM admins WHERE id = $1", [
+        adminIdToDelete,
+      ]);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Administrator nije pronađen." });
+      }
+      res.status(200).json({ message: "Administrator uspješno obrisan." });
+    } catch (error) {
+      console.error("Greška pri brisanju admina:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
+
   return router;
 };
 
