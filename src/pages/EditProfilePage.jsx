@@ -7,7 +7,7 @@ const TagPill = ({ tag, isSelected, onToggle }) => (
     onClick={() => onToggle(tag.id)}
     className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all duration-200 ${
       isSelected
-        ? "bg-orange-500 border-orange-500 text-white"
+        ? "bg-primary border-primary text-white"
         : "bg-white border-gray-300 text-gray-700 hover:border-orange-400"
     }`}
   >
@@ -144,7 +144,7 @@ const EditProfilePage = () => {
         <button
           onClick={handleSaveChanges}
           disabled={isSaving}
-          className="py-2 px-6 rounded-lg bg-orange-500 text-white font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-orange-600"
+          className="py-2 px-6 rounded-lg bg-primary text-white font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-primary-accent"
         >
           {isSaving ? "Čuvanje..." : "Sačuvaj Interesovanja"}
         </button>
