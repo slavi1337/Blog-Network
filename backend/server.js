@@ -207,22 +207,27 @@ app.get("/api/public/search", async (req, res) => {
     havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : "";
 
   const postsQuery = `
-    SELECT 
-      p.id, p.title, p.slug, p.content, p.created_at,
-      u.username AS author_username,
-      c.name AS category_name,
-      COALESCE(SUM(v.vote_type), 0) AS vote_score
-    FROM posts p
-    JOIN users u ON p.author_id = u.id
-    JOIN categories c ON p.category_id = c.id
-    LEFT JOIN post_votes v ON v.post_id = p.id
-    ${joinTagTables}
-    ${whereClause}
-    GROUP BY p.id, u.username, c.name
-    ${havingClause}
-    ORDER BY p.created_at DESC
-    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-  `;
+  SELECT 
+    p.id, 
+    p.title, 
+    p.slug, 
+    p.content, 
+    p.created_at,
+    u.username AS author_username,
+    c.name AS category_name,
+    COALESCE(SUM(v.vote_type), 0) AS vote_score,
+    COALESCE(STRING_AGG(t.name, ', ' ORDER BY t.name), '') AS tags
+  FROM posts p
+  JOIN users u ON p.author_id = u.id
+  JOIN categories c ON p.category_id = c.id
+  LEFT JOIN post_votes v ON v.post_id = p.id
+  LEFT JOIN post_tags pt ON pt.post_id = p.id
+  LEFT JOIN tags t ON t.id = pt.tag_id
+  ${whereClause}
+  GROUP BY p.id, u.username, c.name
+  ${havingClause}
+  ORDER BY p.created_at DESC
+`;
 
   params.push(limit, offset);
 
