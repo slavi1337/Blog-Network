@@ -282,6 +282,31 @@ const adminRouter = (pool) => {
     }
   });
 
+  // dohvatanje detalja problema
+  router.get("/issues/:issueId", async (req, res) => {
+    const { issueId } = req.params;
+    try {
+      const query = `
+                SELECT 
+                    ri.*, 
+                    reporter.username AS reporter_username,
+                    admin.username AS resolved_by_admin_username
+                FROM reported_issues ri
+                LEFT JOIN users reporter ON ri.reporter_user_id = reporter.id
+                LEFT JOIN admins admin ON ri.resolved_by_admin_id = admin.id
+                WHERE ri.id = $1
+            `;
+      const { rows } = await pool.query(query, [issueId]);
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "Problem nije pronađen." });
+      }
+      res.status(200).json(rows[0]);
+    } catch (error) {
+      console.error("Greška pri dohvatanju detalja problema:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
+
   return router;
 };
 
