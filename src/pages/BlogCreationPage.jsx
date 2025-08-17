@@ -300,16 +300,47 @@ const BlogCreationPage = () => {
     fetchCategories();
   }, [isEditMode]);
 
-  const modules = {
-    toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline", "strike", "blockquote"],
-      [{ list: "ordered" }, { list: "bullet" }],
-      ["link", "image", "video"],
-      [{ color: [] }, { background: [] }],
-      ["clean"],
-    ],
-  };
+  useEffect(() => {
+    const currentURLs = new Set(
+      (content.match(/src="([^"]+)"/g) || []).map((src) => src.slice(5, -1))
+    );
+
+    setUploadedFiles((prev) => {
+      const newFiles = new Map();
+      for (const [url, size] of prev.entries()) {
+        if (currentURLs.has(url)) {
+          newFiles.set(url, size);
+        }
+      }
+      return newFiles;
+    });
+  }, [content]);
+
+  const modules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike", "blockquote"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image", "video"],
+          [{ color: [] }, { background: [] }],
+          ["clean"],
+        ],
+        handlers: {
+          image: () => uploadHandler("image"),
+          video: () => uploadHandler("video"),
+        },
+      },
+    }),
+    []
+  );
+
+  const currentUploadSize = Array.from(uploadedFiles.values()).reduce(
+    (sum, size) => sum + size,
+    0
+  );
+  const currentUploadSizeMB = (currentUploadSize / 1024 / 1024).toFixed(2);
 
   const handleSubmit = async (e, forcedStatus) => {
     e.preventDefault();
@@ -466,6 +497,10 @@ const BlogCreationPage = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Sadržaj
               </label>
+              <div className="text-sm text-gray-500">
+                Iskorišteno: <strong>{currentUploadSizeMB} MB</strong> /{" "}
+                {MAX_UPLOAD_SIZE_MB} MB
+              </div>
               {hasRecognitionSupport && (
                 <button
                   type="button"
@@ -488,6 +523,13 @@ const BlogCreationPage = () => {
                 Diktiranje nije podržano u vašem pretraživaču.
               </p>
             )}
+
+            {isUploading && (
+              <div className="bg-yellow-100 text-yellow-800 p-2 rounded-md text-sm mb-2 text-center">
+                Upload slike u toku...
+              </div>
+            )}
+
             <div className="bg-white border border-gray-300 rounded-md">
               <ReactQuill
                 ref={quillRef}
