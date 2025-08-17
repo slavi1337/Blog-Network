@@ -13,10 +13,12 @@
     "@clerk/clerk-react": "^5.33.0",
     "@imagekit/react": "^5.0.1",
     "google-translate-api-x": "^10.7.2",
+    "imagekitio-react": "^4.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-infinite-scroll-component": "^6.1.0",
     "react-quill-new": "^3.4.6",
+    "react-quilljs": "^2.0.5",
     "react-router-dom": "^7.6.3"
   },
   "devDependencies": {
