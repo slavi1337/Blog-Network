@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { IKContext, IKUpload } from "imagekitio-react";
 
 const MicrophoneIcon = ({ isListening }) => (
   <svg
@@ -36,12 +37,135 @@ const BlogCreationPage = () => {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { getToken } = useAuth();
   const { user } = useUser();
   const navigate = useNavigate();
 
   const quillRef = useRef(null);
+  const MAX_UPLOAD_SIZE_MB = 6;
+  const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
+
+  const [uploadedFiles, setUploadedFiles] = useState(new Map());
+
+  const uploadHandler = (mediaType) => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", `${mediaType}/*`);
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file || !quillRef.current) return;
+
+      const currentTotalSize = Array.from(uploadedFiles.values()).reduce(
+        (sum, size) => sum + size,
+        0
+      );
+      if (currentTotalSize + file.size > MAX_UPLOAD_SIZE_BYTES) {
+        setError(
+          `Upload nije uspeo. Ukupna veličina svih fajlova u postu ne smije preći ${MAX_UPLOAD_SIZE_MB} MB.`
+        );
+        return;
+      }
+
+      setIsUploading(true);
+      setError(null);
+
+      const quill = quillRef.current.getEditor();
+      const range = quill.getSelection(true);
+
+      try {
+        const authResponse = await fetch("/api/upload-auth");
+        if (!authResponse.ok) throw new Error("Autentifikacija nije uspjela.");
+        const authParams = await authResponse.json();
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileName", file.name);
+        formData.append("publicKey", import.meta.env.VITE_IK_PUBLIC_KEY);
+        formData.append("signature", authParams.signature);
+        formData.append("expire", authParams.expire);
+        formData.append("token", authParams.token);
+
+        const uploadResponse = await fetch(
+          "https://upload.imagekit.io/api/v1/files/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok)
+          throw new Error(
+            uploadResult.message || `Upload ${mediaType} nije uspio.`
+          );
+
+        setUploadedFiles((prev) =>
+          new Map(prev).set(uploadResult.url, uploadResult.size)
+        );
+
+        quill.insertEmbed(range.index, mediaType, uploadResult.url);
+        quill.setSelection(range.index + 1);
+      } catch (uploadError) {
+        setError(`Greška pri uploadu: ${uploadError.message}`);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+  };
+
+  const imageHandler = () => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file || !quillRef.current) return;
+
+      setIsUploading(true);
+      setError(null);
+
+      try {
+        const authResponse = await fetch("/api/upload-auth");
+        if (!authResponse.ok) throw new Error("Autentifikacija nije uspjela.");
+        const authParams = await authResponse.json();
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileName", file.name);
+        formData.append("publicKey", import.meta.env.VITE_IK_PUBLIC_KEY);
+        formData.append("signature", authParams.signature);
+        formData.append("expire", authParams.expire);
+        formData.append("token", authParams.token);
+
+        const uploadResponse = await fetch(
+          "https://upload.imagekit.io/api/v1/files/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok)
+          throw new Error(uploadResult.message || "Upload slike nije uspio.");
+
+        const quill = quillRef.current.getEditor();
+        const range = quill.getSelection(true);
+        quill.insertEmbed(range.index, "image", uploadResult.url);
+      } catch (uploadError) {
+        console.error("Upload error:", uploadError);
+        setError(`Greška pri uploadu: ${uploadError.message}`);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+  };
   const {
     isListening,
     transcript,
