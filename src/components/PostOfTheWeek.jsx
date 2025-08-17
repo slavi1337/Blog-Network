@@ -1,23 +1,73 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+
 const PostOfTheWeek = () => {
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedPost = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/public/posts/featured");
+        if (response.ok) {
+          const data = await response.json();
+          setPost(data);
+        }
+      } catch (error) {
+        console.error("Nije moguće učitati objavu sedmice.", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeaturedPost();
+  }, []);
+
+  if (loading) {
     return (
-        <div className="mt-8 text-center">
-            <h1 className="text-3xl font-bold text-orange-600 mb-6">Objava sedmice!</h1>
-            <div className="flex flex-row border-4 border-orange-500 p-4 mt-4">
-                <img src="public/vite.svg" alt="Image" className="w-1/4 mr-8"/>
-                <div className="text-center w-3/4">
-                    <div className="mb-4">
-                        <h1 className="font-bold text-xl">Naslov bloga</h1>
-                        <span className="text-gray-500 mr-4">ime korisnika</span>
-                        <span className="text-gray-500 mr-4">-</span>
-                        <span className="text-gray-500 mr-4">vrijeme objave</span>
-                        <span className="text-gray-500 mr-4">-</span>
-                        <span className="text-gray-500 mr-4">kategorija</span>
-                    </div>
-                    <p className="">Lorem ipsum dolor sit, amet consectetur adipisicing elit. Accusamus quasi vitae tempore velit provident. Nemo eligendi deserunt eaque vero, cupiditate similique, a ea repudiandae neque amet nisi eius consectetur doloribus!</p>
-                </div>
+      <div className="text-center mt-8">
+        <p>Učitavanje objave sedmice...</p>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return null;
+  }
+
+  const snippet =
+    post.content.replace(/<[^>]+>/g, "").substring(0, 250) + "...";
+
+  return (
+    <div className="mt-8 text-center">
+      <h1 className="text-3xl font-bold text-primary mb-6">Objava sedmice!</h1>
+      <div className="flex flex-col md:flex-row border-4 border-primary p-4 mt-4">
+        <img
+          src="/vite.svg"
+          alt="Cover"
+          className="w-full md:w-1/4 mr-8 mb-4 md:mb-0"
+        />
+        <div className="text-center md:text-left w-full md:w-3/4">
+          <div className="mb-4">
+            <Link
+              to={`/posts/${post.slug}`}
+              className="font-bold text-xl hover:underline text-textcolor"
+            >
+              {post.title}
+            </Link>
+            <div className="text-sm text-gray-500 mt-1">
+              <span>{post.author_username}</span>
+              <span className="mx-2">-</span>
+              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+              <span className="mx-2">-</span>
+              <span>{post.category_name}</span>
             </div>
+          </div>
+          <p className="text-gray-700">{snippet}</p>
         </div>
-    )
-}
+      </div>
+    </div>
+  );
+};
 
 export default PostOfTheWeek;

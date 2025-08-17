@@ -5,6 +5,14 @@ const { Pool } = require("pg");
 const bodyParser = require("body-parser");
 const { ClerkExpressWithAuth, clerkClient } = require("@clerk/clerk-sdk-node");
 const path = require("path");
+const session = require("express-session");
+
+const adminRoutes = require("./routes/admin");
+
+const { translate } = require("@vitalets/google-translate-api");
+
+const { publishScheduledPosts } = require("./jobs/postScheduler");
+const { scheduleWeeklyJob } = require("./jobs/blogOfTheWeekSelector");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,9 +26,26 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
 app.use(express.json());
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false,
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 8,
+      path: "/api/admin",
+    },
+  })
+);
+app.use("/api/admin", adminRoutes(pool));
 
 const getInternalUserId = async (clerkId) => {
   if (!clerkId) return null;
@@ -30,18 +55,48 @@ const getInternalUserId = async (clerkId) => {
   return result.rows.length > 0 ? result.rows[0].id : null;
 };
 
+app.get("/api/public/posts/featured", async (req, res) => {
+  try {
+    const query = `
+            SELECT 
+                p.id, p.title, p.slug, p.content, p.created_at,
+                u.username AS author_username,
+                c.name AS category_name
+            FROM posts p
+            JOIN users u ON p.author_id = u.id
+            JOIN categories c ON p.category_id = c.id
+            JOIN featured_post fp ON p.id = fp.post_id
+            WHERE fp.id = 1;
+        `;
+    const { rows } = await pool.query(query);
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Objava sedmice nije postavljena." });
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Greška pri dohvatanju objave sedmice:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 // --- API RUTA ZA KREIRANJE NOVOG POSTA ---
 app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
+  const { title, categoryId, content, tags, status, publishAt } = req.body;
+
   if (!clerkId) return res.status(401).json({ error: "Niste autorizovani." });
-
-  const { title, categoryId, content, tags } = req.body;
-
   if (!title || !content || !categoryId) {
     return res
       .status(400)
       .json({ error: "Naslov, sadržaj, i kategorija su obavezni." });
   }
+
+  const finalStatus =
+    status === "draft" || status === "scheduled" ? status : "published";
+  const finalPublishAt =
+    finalStatus === "scheduled" && publishAt ? publishAt : null;
 
   try {
     const authorId = await getInternalUserId(clerkId);
@@ -56,11 +111,20 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
     const slug = `${slugBase}-${Date.now()}`;
 
     const query = `
-      INSERT INTO posts (author_id, category_id, title, slug, content, status)
-      VALUES ($1, $2, $3, $4, $5, 'published')
-      RETURNING id, slug;
+      INSERT INTO posts (author_id, category_id, title, slug, content, status, publish_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, slug, status;
     `;
-    const values = [authorId, categoryId, title, slug, content];
+
+    const values = [
+      authorId,
+      categoryId,
+      title,
+      slug,
+      content,
+      finalStatus,
+      finalPublishAt,
+    ];
     const newPostResult = await pool.query(query, values);
     const newPost = newPostResult.rows[0];
     const newPostId = newPost.id;
@@ -92,32 +156,10 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
       );
     }
 
-    res.status(201).json({ message: "Post uspešno kreiran!", post: newPost });
-
-    try {
-      const followersRes = await pool.query(
-        `SELECT follower_id FROM followers WHERE followed_id = $1 AND notifications_enabled = TRUE`,
-        [authorId]
-      );
-      if (followersRes.rowCount > 0) {
-        const followerIds = followersRes.rows.map((r) => r.follower_id);
-        const notificationParams = followerIds.flatMap((id) => [
-          id,
-          "new_post_from_followed",
-          newPost.id,
-        ]);
-        const valuePlaceholders = followerIds
-          .map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`)
-          .join(",");
-        const notificationQuery = `INSERT INTO notifications (recipient_id, type, related_entity_id) VALUES ${valuePlaceholders}`;
-        await pool.query(notificationQuery, notificationParams);
-      }
-    } catch (notificationError) {
-      console.error(
-        "Greška pri slanju notifikacija za novi post:",
-        notificationError
-      );
-    }
+    res.status(201).json({
+      message: `Post uspešno sačuvan kao ${finalStatus}!`,
+      post: newPost,
+    });
   } catch (error) {
     console.error("Greška pri kreiranju posta:", error);
     res.status(500).json({ error: "Greška na serveru." });
@@ -126,46 +168,97 @@ app.post("/api/posts", ClerkExpressWithAuth(), async (req, res) => {
 
 app.get("/api/public/search", async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = 5;
+  const limit = 8;
   const offset = (page - 1) * limit;
-  const search = (req.query.search || "").trim();
 
-  const searchActive = search.length > 0;
+  const search = (req.query.search || "").trim();
+  const minLikes = parseInt(req.query.minLikes);
+  const maxLikes = parseInt(req.query.maxLikes);
+  const minDate = req.query.minDate;
+  const maxDate = req.query.maxDate;
+
+  const params = [];
+  const whereClauses = ["p.status = 'published'"];
+  let paramIndex = 1;
+
+  if (search.length > 0) {
+    whereClauses.push(
+      `(p.title ILIKE '%' || $${paramIndex} || '%' OR p.content ILIKE '%' || $${paramIndex} || '%')`
+    );
+    params.push(search);
+    paramIndex++;
+  }
+
+  if (minDate) {
+    whereClauses.push(`p.created_at >= $${paramIndex}`);
+    params.push(minDate);
+    paramIndex++;
+  }
+
+  if (maxDate) {
+    whereClauses.push(`p.created_at <= $${paramIndex}`);
+    params.push(maxDate);
+    paramIndex++;
+  }
+
+  const whereClause =
+    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+  const havingClauses = [];
+  if (!isNaN(minLikes)) {
+    havingClauses.push(`COALESCE(SUM(v.vote_type), 0) >= $${paramIndex}`);
+    params.push(minLikes);
+    paramIndex++;
+  }
+
+  if (!isNaN(maxLikes)) {
+    havingClauses.push(`COALESCE(SUM(v.vote_type), 0) <= $${paramIndex}`);
+    params.push(maxLikes);
+    paramIndex++;
+  }
+
+  const havingClause =
+    havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : "";
+
+  const postsQuery = `
+    SELECT 
+      p.id, p.title, p.slug, p.content, p.created_at,
+      u.username AS author_username,
+      c.name AS category_name,
+      COALESCE(SUM(v.vote_type), 0) AS vote_score
+    FROM posts p
+    JOIN users u ON p.author_id = u.id
+    JOIN categories c ON p.category_id = c.id
+    LEFT JOIN post_votes v ON v.post_id = p.id
+    ${whereClause}
+    GROUP BY p.id, u.username, c.name
+    ${havingClause}
+    ORDER BY p.created_at DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
+
+  params.push(limit, offset);
+
+  console.log("SQL query:", postsQuery);
+  console.log("Params:", params);
 
   try {
-    const searchClause = `
-      AND (p.title ILIKE '%' || $1 || '%' OR p.content ILIKE '%' || $1 || '%')
-    `;
-
-    const postsQuery = `
-      SELECT 
-        p.id, p.title, p.slug, p.content, p.created_at,
-        u.username AS author_username,
-        c.name AS category_name,
-        (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
-      FROM posts p
-      JOIN users u ON p.author_id = u.id
-      JOIN categories c ON p.category_id = c.id
-      WHERE p.status = 'published'
-      ${searchActive ? searchClause : ""}
-      ORDER BY p.created_at DESC
-      LIMIT $${searchActive ? 2 : 1} OFFSET $${searchActive ? 3 : 2}
-    `;
-
-    const queryParams = searchActive
-      ? [search, limit, offset]
-      : [limit, offset];
-
-    const { rows } = await pool.query(postsQuery, queryParams);
+    const { rows } = await pool.query(postsQuery, params);
 
     const countQuery = `
-      SELECT COUNT(*) FROM posts p
-      WHERE p.status = 'published'
-      ${searchActive ? searchClause : ""}
+      SELECT COUNT(*) FROM (
+        SELECT p.id
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        JOIN categories c ON p.category_id = c.id
+        LEFT JOIN post_votes v ON v.post_id = p.id
+        ${whereClause}
+        GROUP BY p.id, u.username, c.name
+        ${havingClause}
+      ) AS filtered_posts
     `;
 
-    const countParams = searchActive ? [search] : [];
-
+    const countParams = params.slice(0, paramIndex - 1);
     const countResult = await pool.query(countQuery, countParams);
 
     const total = parseInt(countResult.rows[0].count);
@@ -183,26 +276,25 @@ app.get("/api/public/posts/:slug", async (req, res) => {
   const { slug } = req.params;
   try {
     const postQuery = `
-          SELECT 
-          p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
-          u.username AS author_username,
-          c.name AS category_name,
-          c.id AS category_id, -- Vraćamo i ID kategorije za lakše popunjavanje forme
-          (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
-          STRING_AGG(t.name, ' ') AS tags
-          FROM posts p
-          JOIN users u ON p.author_id = u.id
-          JOIN categories c ON p.category_id = c.id
-          LEFT JOIN post_tags pt ON p.id = pt.post_id
-          LEFT JOIN tags t ON pt.tag_id = t.id
-          WHERE p.slug = $1 AND p.status = 'published'
-          GROUP BY p.id, u.id, c.id;
-        `;
+      SELECT p.id, p.title, p.slug, p.content, p.created_at, p.updated_at,
+             u.username AS author_username, c.name AS category_name, c.id AS category_id,
+             (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
+             STRING_AGG(t.name, ' ') AS tags
+      FROM posts p
+      JOIN users u ON p.author_id = u.id
+      JOIN categories c ON p.category_id = c.id
+      LEFT JOIN post_tags pt ON p.id = pt.post_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
+      WHERE p.slug = $1 AND p.status = 'published'
+      GROUP BY p.id, u.id, c.id;
+    `;
 
     const postResult = await pool.query(postQuery, [slug]);
 
     if (postResult.rowCount === 0) {
-      return res.status(404).json({ error: "Post nije pronađen." });
+      return res
+        .status(404)
+        .json({ error: "Post nije pronađen ili još uvek nije objavljen." });
     }
 
     res.json(postResult.rows[0]);
@@ -249,7 +341,7 @@ app.get("/api/public/posts", async (req, res) => {
 app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
   const clerkId = req.auth.userId;
   const { postId } = req.params;
-  const { title, categoryId, content, tags } = req.body;
+  const { title, categoryId, content, tags, status, publishAt } = req.body;
 
   if (!title || !content || !categoryId) {
     return res
@@ -257,32 +349,32 @@ app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
       .json({ error: "Naslov, sadržaj i kategorija su obavezni." });
   }
 
-  const client = await pool.connect();
+  const finalStatus =
+    status === "draft" || status === "scheduled" ? status : "published";
+  const finalPublishAt =
+    finalStatus === "scheduled" && publishAt ? publishAt : null;
 
+  const client = await pool.connect();
   try {
     await client.query("BEGIN");
-
     const internalUserId = await getInternalUserId(clerkId);
-    if (!internalUserId) {
+    if (!internalUserId)
       return res.status(404).json({ error: "Korisnik nije pronađen." });
-    }
 
     const postResult = await client.query(
       "SELECT author_id FROM posts WHERE id = $1",
       [postId]
     );
-    if (postResult.rowCount === 0) {
+    if (postResult.rowCount === 0)
       return res.status(404).json({ error: "Post nije pronađen." });
-    }
-    if (postResult.rows[0].author_id !== internalUserId) {
+    if (postResult.rows[0].author_id !== internalUserId)
       return res
         .status(403)
         .json({ error: "Nemate dozvolu da menjate ovaj post." });
-    }
 
     await client.query(
-      `UPDATE posts SET title = $1, category_id = $2, content = $3, updated_at = NOW() WHERE id = $4`,
-      [title, categoryId, content, postId]
+      `UPDATE posts SET title = $1, category_id = $2, content = $3, status = $4, publish_at = $5, updated_at = NOW() WHERE id = $6`,
+      [title, categoryId, content, finalStatus, finalPublishAt, postId]
     );
 
     await client.query("DELETE FROM post_tags WHERE post_id = $1", [postId]);
@@ -291,7 +383,6 @@ app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
       .split(/\s+/)
       .map((t) => t.replace(/^#/, ""))
       .filter((t) => t.length > 0);
-
     for (const tagName of listaTagova) {
       let { rows } = await client.query("SELECT id FROM tags WHERE name = $1", [
         tagName,
@@ -320,6 +411,86 @@ app.put("/api/posts/:postId", ClerkExpressWithAuth(), async (req, res) => {
     res.status(500).json({ error: "Greška na serveru." });
   } finally {
     client.release();
+  }
+});
+
+app.delete(
+  "/api/posts/:postId/draft",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const result = await pool.query(
+        "DELETE FROM posts WHERE id = $1 AND author_id = $2 AND status IN ('draft', 'scheduled')",
+        [postId, userId]
+      );
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          error: "Draft nije pronađen ili nemate dozvolu za brisanje.",
+        });
+      }
+      res.status(200).json({ message: "Uspešno obrisano." });
+    } catch (error) {
+      console.error("Greška pri brisanju drafta:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+app.get("/api/profile/drafts", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    const { rows } = await pool.query(
+      `SELECT id, title, slug, status, updated_at, publish_at 
+             FROM posts 
+             WHERE author_id = $1 AND status IN ('draft', 'scheduled') 
+             ORDER BY updated_at DESC`,
+      [userId]
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
+app.get("/api/posts/:slug/edit", ClerkExpressWithAuth(), async (req, res) => {
+  const clerkId = req.auth.userId;
+  const { slug } = req.params;
+  try {
+    const userId = await getInternalUserId(clerkId);
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+    const query = `
+            SELECT 
+                p.id, p.title, p.slug, p.content, p.status, p.publish_at,
+                c.id AS category_id,
+                STRING_AGG(t.name, ' ') AS tags
+            FROM posts p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN post_tags pt ON p.id = pt.post_id
+            LEFT JOIN tags t ON pt.tag_id = t.id
+            WHERE p.slug = $1 AND p.author_id = $2
+            GROUP BY p.id, c.id;
+        `;
+    const { rows } = await pool.query(query, [slug, userId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        error: "Post nije pronađen ili nemate dozvolu za uređivanje.",
+      });
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Greška pri dohvatanju posta za uređivanje:", error);
+    res.status(500).json({ error: "Greška na serveru." });
   }
 });
 
@@ -571,13 +742,19 @@ app.get("/api/notifications", ClerkExpressWithAuth(), async (req, res) => {
                 n.id, n.type, n.is_read, n.created_at,
                 p.slug AS post_slug,
                 p.title AS post_title,
-                -- Korisnik koji je izazvao notifikaciju (autor posta ili komentara)
+                ri.description AS issue_description,
+                
                 CASE
-                    WHEN n.type = 'new_post_from_followed' THEN (SELECT u.username FROM posts po JOIN users u ON po.author_id = u.id WHERE po.id = n.related_entity_id)
-                    WHEN n.type = 'reply_to_comment' THEN (SELECT u.username FROM comments co JOIN users u ON co.user_id = u.id WHERE co.parent_comment_id = n.secondary_entity_id ORDER BY co.created_at DESC LIMIT 1)
+                    WHEN n.type = 'new_post_from_followed' 
+                        THEN (SELECT u.username FROM posts po JOIN users u ON po.author_id = u.id WHERE po.id = n.related_entity_id)
+                    WHEN n.type = 'reply_to_comment' 
+                        THEN (SELECT u.username FROM comments co JOIN users u ON co.user_id = u.id WHERE co.parent_comment_id = n.secondary_entity_id ORDER BY co.created_at DESC LIMIT 1)
+                    WHEN n.type = 'issue_status_change' 
+                        THEN 'Admin Tim'
                 END AS actor_username
             FROM notifications n
-            JOIN posts p ON n.related_entity_id = p.id
+            LEFT JOIN posts p ON n.related_entity_id = p.id AND n.type IN ('new_post_from_followed', 'reply_to_comment')
+            LEFT JOIN reported_issues ri ON n.related_entity_id = ri.id AND n.type = 'issue_status_change'
             WHERE n.recipient_id = $1 
             ORDER BY n.created_at DESC 
             LIMIT 30;
@@ -651,6 +828,121 @@ app.post(
         "Greška pri označavanju notifikacija kao pročitanih:",
         error
       );
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// --- RUTA ZA PRIJAVU PROBLEMA ---
+app.post(
+  "/api/issues",
+  ClerkExpressWithAuth({ optional: true }),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { issueType, description, relatedEntityType, relatedEntityId } =
+      req.body;
+
+    if (!issueType || !description) {
+      return res
+        .status(400)
+        .json({ error: "Tip problema i opis su obavezni." });
+    }
+    const validIssueTypes = [
+      "bug_report",
+      "inappropriate_content",
+      "spam",
+      "other",
+    ];
+    if (!validIssueTypes.includes(issueType)) {
+      return res.status(400).json({ error: "Nevažeći tip problema." });
+    }
+
+    try {
+      const reporterUserId = await getInternalUserId(clerkId); //null ako user nije prijavljen
+
+      const query = `
+            INSERT INTO reported_issues 
+                (reporter_user_id, issue_type, description, related_entity_type, related_entity_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id;
+        `;
+      const values = [
+        reporterUserId,
+        issueType,
+        description,
+        relatedEntityType || null,
+        relatedEntityId || null,
+      ];
+
+      await pool.query(query, values);
+
+      res.status(201).json({
+        message: "Problem je uspješno prijavljen. Hvala vam na pomoći!",
+      });
+    } catch (error) {
+      console.error("Greška pri prijavi problema:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// 1. BILJEŽENJE ČITANJA POSTA (ili azuriranje vremena čitanja)
+app.post(
+  "/api/posts/:postId/history",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      // ON CONFLICT updejtuje vrijeme citanja
+      const query = `
+            INSERT INTO reading_history (user_id, post_id, read_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (user_id, post_id) DO UPDATE
+            SET read_at = NOW();
+        `;
+      await pool.query(query, [userId, postId]);
+
+      res.status(201).json({ message: "Istorija čitanja ažurirana." });
+    } catch (error) {
+      console.error("Greška pri bilježenju istorije čitanja:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  }
+);
+
+// UKLONI POST IZ ISTORIJE ČITANJA
+app.delete(
+  "/api/posts/:postId/history",
+  ClerkExpressWithAuth(),
+  async (req, res) => {
+    const clerkId = req.auth.userId;
+    const { postId } = req.params;
+
+    try {
+      const userId = await getInternalUserId(clerkId);
+      if (!userId)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+      const result = await pool.query(
+        "DELETE FROM reading_history WHERE user_id = $1 AND post_id = $2",
+        [userId, postId]
+      );
+
+      if (result.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ error: "Unos nije pronađen u istoriji." });
+      }
+
+      res.status(200).json({ message: "Uklonjeno iz istorije čitanja." });
+    } catch (error) {
+      console.error("Greška pri brisanju iz istorije čitanja:", error);
       res.status(500).json({ error: "Greška na serveru." });
     }
   }
@@ -1296,6 +1588,25 @@ app.get("/api/posts/history", ClerkExpressWithAuth(), async (req, res) => {
   }
 });
 
+app.post("/api/translate", express.json(), async (req, res) => {
+  const { text, targetLang, isHtml } = req.body;
+
+  if (!text || !targetLang) {
+    return res.status(400).json({ error: "Tekst i ciljni jezik su obavezni." });
+  }
+
+  try {
+    const result = await translate(text, { to: targetLang, from: "auto" });
+
+    res.status(200).json({ translatedText: result.text });
+  } catch (error) {
+    console.error("Greška pri prevođenju na backendu:", error);
+    res
+      .status(500)
+      .json({ error: "Usluga za prevođenje trenutno nije dostupna." });
+  }
+});
+
 app.use(express.static(path.join(__dirname, "../dist")));
 
 // Endpoint za webhook
@@ -1406,4 +1717,9 @@ app.get(/^(?!\/api).*/, (req, res) => {
 
 app.listen(port, () => {
   console.log(`Backend server sluša na http://localhost:${port}`);
+  console.log("Pokrećem periodičnu provjeru zakazanih objava svakih 5min...");
+  setInterval(() => {
+    publishScheduledPosts(pool);
+  }, 5 * 60 * 1000);
+  scheduleWeeklyJob(pool);
 });
