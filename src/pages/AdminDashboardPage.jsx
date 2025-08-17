@@ -137,4 +137,27 @@ const AdminDashboardPage = () => {
       fetchData("users");
     }
   };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    const originalData = JSON.parse(JSON.stringify(data));
+    setData((currentData) =>
+      currentData.map((item) =>
+        item.id === userId ? { ...item, role: newRole } : item
+      )
+    );
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/role`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newRole }),
+      });
+      if (!response.ok) {
+        alert("Greška pri promjeni uloge.");
+        setData(originalData);
+      }
+    } catch (err) {
+      alert("Greška pri promjeni uloge.");
+      setData(originalData);
+    }
+  };
 }
