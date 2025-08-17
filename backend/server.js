@@ -5,6 +5,9 @@ const { Pool } = require("pg");
 const bodyParser = require("body-parser");
 const { ClerkExpressWithAuth, clerkClient } = require("@clerk/clerk-sdk-node");
 const path = require("path");
+const session = require("express-session");
+
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -23,6 +26,21 @@ const pool = new Pool({
 });
 
 app.use(express.json());
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false,
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 8,
+      path: "/api/admin",
+    },
+  })
+);
+app.use("/api/admin", adminRoutes(pool));
 
 const publishScheduledPosts = async () => {
   console.log("Provera zakazanih objava...");
