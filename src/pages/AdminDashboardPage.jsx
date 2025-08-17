@@ -160,4 +160,24 @@ const AdminDashboardPage = () => {
       setData(originalData);
     }
   };
+
+  const handleDeleteAdmin = async (adminId) => {
+    if (
+      !window.confirm(
+        "Da li ste sigurni da želite da obrišete ovog administratora?"
+      )
+    )
+      return;
+    try {
+      const response = await fetch(`/api/admin/admins/${adminId}`, {
+        method: "DELETE",
+      });
+      const responseData = await response.json();
+      if (!response.ok) throw new Error(responseData.error);
+      alert(responseData.message);
+      fetchData("admins");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 }
