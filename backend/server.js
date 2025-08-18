@@ -216,29 +216,37 @@ app.get("/api/public/search", async (req, res) => {
   const havingClause =
     havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : "";
 
-  const postsQuery = `
-  SELECT 
-    p.id, 
-    p.title, 
-    p.slug, 
-    p.content, 
-    p.created_at,
-    u.username AS author_username,
-    c.name AS category_name,
-    p.view_count,
-    COALESCE(SUM(v.vote_type), 0) AS vote_score,
-    COALESCE(STRING_AGG(t.name, ', ' ORDER BY t.name), '') AS tags
-  FROM posts p
-  JOIN users u ON p.author_id = u.id
-  JOIN categories c ON p.category_id = c.id
-  LEFT JOIN post_votes v ON v.post_id = p.id
-  LEFT JOIN post_tags pt ON pt.post_id = p.id
-  LEFT JOIN tags t ON t.id = pt.tag_id
-  ${whereClause}
-  GROUP BY p.id, u.username, c.name
-  ${havingClause}
-  ORDER BY p.created_at DESC
-  LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  const postsQuery = `SELECT 
+  p.id, 
+  p.title, 
+  p.slug, 
+  p.content, 
+  p.created_at,
+  u.username AS author_username,
+  c.name AS category_name,
+  COALESCE(vote_data.score, 0) AS vote_score,
+  COALESCE(tag_data.tags, '') AS tags          
+FROM posts p
+JOIN users u ON p.author_id = u.id
+JOIN categories c ON p.category_id = c.id
+
+LEFT JOIN (
+    SELECT post_id, SUM(vote_type) as score
+    FROM post_votes
+    GROUP BY post_id
+) AS vote_data ON p.id = vote_data.post_id
+
+LEFT JOIN (
+    SELECT post_id, STRING_AGG(t.name, ', ' ORDER BY t.name) as tags
+    FROM post_tags pt
+    JOIN tags t ON pt.tag_id = t.id
+    GROUP BY post_id
+) AS tag_data ON p.id = tag_data.post_id
+
+${whereClause}
+${havingClause}
+ORDER BY p.created_at DESC
+LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
 `;
 
   params.push(limit, offset);
