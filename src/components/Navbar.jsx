@@ -48,14 +48,6 @@ const Navbar = () => {
     localStorage.setItem("theme", theme);
   };
 
-  const NavLinks = () => (
-    <>
-      <Link to="/" className="hover:text-primary transition-colors">
-        Home
-      </Link>
-    </>
-  );
-
   const UserActions = () => {
     if (!user) return null;
 
@@ -200,7 +192,6 @@ const Navbar = () => {
             open ? "translate-x-0" : "translate-x-full"
           }`}
         >
-          <NavLinks />
           <SignedIn>
             <div className="flex items-center gap-8">
               <NotificationBell />
