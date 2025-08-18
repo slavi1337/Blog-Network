@@ -142,18 +142,15 @@ app.get("/api/public/search", async (req, res) => {
   const limit = 8;
   const offset = (page - 1) * limit;
 
-  const search = (req.query.search || "").trim();
-  const minLikes = parseInt(req.query.minLikes);
-  const maxLikes = parseInt(req.query.maxLikes);
-  const minDate = req.query.minDate;
-  const maxDate = req.query.maxDate;
   const tags = req.query.tags;
 
-  const params = [];
+  const { search, minLikes, maxLikes, minDate, maxDate, tags } = req.query;
+
+  let params = [];
   const whereClauses = ["p.status = 'published'"];
   let paramIndex = 1;
 
-  if (search.length > 0) {
+  if (search) {
     whereClauses.push(
       `(p.title ILIKE '%' || $${paramIndex} || '%' OR p.content ILIKE '%' || $${paramIndex} || '%')`
     );
@@ -173,97 +170,58 @@ app.get("/api/public/search", async (req, res) => {
     paramIndex++;
   }
 
-  let joinTagTables = "";
-  let tagWhere = "";
-
-  if (
-    tags &&
-    ((typeof tags === "string" && tags.length > 0) ||
-      (Array.isArray(tags) && tags.length > 0))
-  ) {
-    const tagsArray = typeof tags === "string" ? [tags] : tags;
-
-    joinTagTables = `
-      JOIN post_tags pt ON pt.post_id = p.id
-      JOIN tags t ON t.id = pt.tag_id
-    `;
-
-    whereClauses.push(`t.name = ANY($${paramIndex}::text[])`);
+  const tagsArray = Array.isArray(tags) ? tags : tags ? [tags] : [];
+  if (tagsArray.length > 0) {
+    whereClauses.push(`(
+      SELECT COUNT(DISTINCT t.name)
+      FROM post_tags pt
+      JOIN tags t ON pt.tag_id = t.id
+      WHERE pt.post_id = p.id AND t.name = ANY($${paramIndex}::text[])
+    ) = ${tagsArray.length}`);
     params.push(tagsArray);
     paramIndex++;
   }
 
-  const whereClause =
-    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-
-  const havingClauses = [];
-  if (!isNaN(minLikes)) {
-    havingClauses.push(`COALESCE(SUM(v.vote_type), 0) >= $${paramIndex}`);
-    params.push(minLikes);
-    paramIndex++;
+  if (minLikes || maxLikes) {
+    if (minLikes) {
+      whereClauses.push(
+        `(SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) >= $${paramIndex}`
+      );
+      params.push(parseInt(minLikes));
+      paramIndex++;
+    }
+    if (maxLikes) {
+      whereClauses.push(
+        `(SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) <= $${paramIndex}`
+      );
+      params.push(parseInt(maxLikes));
+      paramIndex++;
+    }
   }
 
-  if (!isNaN(maxLikes)) {
-    havingClauses.push(`COALESCE(SUM(v.vote_type), 0) <= $${paramIndex}`);
-    params.push(maxLikes);
-    paramIndex++;
-  }
-
-  if (tags && Array.isArray(tags) && tags.length > 0) {
-    havingClauses.push(`COUNT(DISTINCT t.name) = ${tags.length}`);
-  }
-
-  const havingClause =
-    havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : "";
+  const whereClause = `WHERE ${whereClauses.join(" AND ")}`;
 
   const postsQuery = `SELECT 
-    p.id, 
-    p.title, 
-    p.slug, 
-    p.content, 
-    p.created_at,
-    u.username AS author_username,
-    c.name AS category_name,
-    p.view_count,
-    COALESCE(SUM(v.vote_type), 0) AS vote_score,
-    COALESCE(STRING_AGG(t.name, ', ' ORDER BY t.name), '') AS tags
-  FROM posts p
-  JOIN users u ON p.author_id = u.id
-  JOIN categories c ON p.category_id = c.id
-  LEFT JOIN post_votes v ON v.post_id = p.id
-  LEFT JOIN post_tags pt ON pt.post_id = p.id
-  LEFT JOIN tags t ON t.id = pt.tag_id
-  ${whereClause}
-  GROUP BY p.id, u.username, c.name
-  ${havingClause}
-  ORDER BY p.created_at DESC
-  LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-`;
+      p.id, p.title, p.slug, p.created_at, p.view_count,
+      u.username AS author_username,
+      c.name AS category_name,
+      (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
+      (SELECT COALESCE(STRING_AGG(t.name, ', '), '') FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id) AS tags
+    FROM posts p
+    JOIN users u ON p.author_id = u.id
+    JOIN categories c ON p.category_id = c.id
+    ${whereClause}
+    ORDER BY p.created_at DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
 
-  params.push(limit, offset);
-
-  console.log("SQL query:", postsQuery);
-  console.log("Params:", params);
+  const finalParams = [...params, limit, offset];
 
   try {
-    const { rows } = await pool.query(postsQuery, params);
+    const { rows } = await pool.query(postsQuery, finalParams);
 
-    const countQuery = `
-      SELECT COUNT(*) FROM (
-        SELECT p.id
-        FROM posts p
-        JOIN users u ON p.author_id = u.id
-        JOIN categories c ON p.category_id = c.id
-        LEFT JOIN post_votes v ON v.post_id = p.id
-        ${joinTagTables}
-        ${whereClause}
-        GROUP BY p.id, u.username, c.name
-        ${havingClause}
-      ) AS filtered_posts
-    `;
-
-    const countParams = params.slice(0, paramIndex - 1);
-    const countResult = await pool.query(countQuery, countParams);
+    const countQuery = `SELECT COUNT(*) FROM posts p ${whereClause}`;
+    const countResult = await pool.query(countQuery, params);
 
     const total = parseInt(countResult.rows[0].count);
     const hasMore = offset + limit < total;
