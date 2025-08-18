@@ -146,7 +146,7 @@ app.get("/api/public/search", async (req, res) => {
 
   const { search, minLikes, maxLikes, minDate, maxDate, tags } = req.query;
 
-  const params = [];
+  let params = [];
   const whereClauses = ["p.status = 'published'"];
   let paramIndex = 1;
 
