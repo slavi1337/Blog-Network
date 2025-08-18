@@ -1,8 +1,9 @@
 import { Routes, Route, Link, useSearchParams } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import PostList from "./components/PostList.jsx";
+import UserListSearch from "./components/UserListSearch.jsx";
 
 import MainLayout from "./layouts/MainLayout";
 
@@ -29,17 +30,19 @@ import AdminIssueDetailsPage from "./pages/AdminIssueDetailsPage";
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
+  const [users, setUsers] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
+  const searchType = searchParams.get("type") || "posts";
   const minLikes = searchParams.get("minLikes") || "";
   const maxLikes = searchParams.get("maxLikes") || "";
   const minDate = searchParams.get("minDate") || "";
   const maxDate = searchParams.get("maxDate") || "";
   const tags = searchParams.getAll("tags");
 
-  const fetchPosts = async (pageToFetch) => {
+  const fetchPosts = useCallback(async (pageToFetch, isNewSearch = false) => {
     try {
       const params = new URLSearchParams();
 
@@ -48,46 +51,109 @@ const HomePage = () => {
       if (maxLikes) params.append("maxLikes", maxLikes);
       if (minDate) params.append("minDate", minDate);
       if (maxDate) params.append("maxDate", maxDate);
-      if (tags.length > 0) {
-        tags.forEach((tag) => params.append("tags", tag));
-      }
+      tags.forEach(tag => params.append("tags", tag));
 
       params.append("page", pageToFetch);
 
       const res = await fetch(`/api/public/search?${params.toString()}`);
       const data = await res.json();
 
-      if (pageToFetch === 1) {
-        setPosts(data.posts);
-      } else {
-        setPosts((prev) => [...prev, ...data.posts]);
-      }
+      setPosts(isNewSearch ? (data.posts || []) : prev => [...prev, ...(data.posts || [])]);
 
       setHasMore(data.hasMore);
       setPage(pageToFetch + 1); //sl br stranice za sl put
     } catch (error) {
       console.error("Greška prilikom dohvatanja postova:", error);
     }
-  };
+  }, [searchQuery, minLikes, maxLikes, minDate, maxDate, JSON.stringify(tags)]);
+
+  const fetchUsers = useCallback(async () => {
+    if (!searchQuery) {
+      setUsers([]);
+      return;
+    }
+    try {
+      const params = new URLSearchParams({ search: searchQuery });
+      const res = await fetch(`/api/public/search/users?${params.toString()}`);
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (error) {
+      console.error("Greška prilikom dohvatanja korisnika:", error);
+    }
+  }, [searchQuery]);
 
   useEffect(() => {
-    setPage(1);
-    setPosts([]);
-    fetchPosts(1);
-  }, [searchQuery, minLikes, maxLikes, minDate, maxDate, JSON.stringify(tags)]);
+    if (searchQuery) {
+      if (searchType === 'users') {
+        setPosts([]);
+        setHasMore(false);
+        fetchUsers();
+      } else {
+        setUsers([]);
+        setPage(1);
+        fetchPosts(1, true);
+      }
+    } else {
+      setUsers([]);
+      setPage(1);
+      fetchPosts(1, true);
+    }
+  }, [searchQuery, searchType, fetchPosts, fetchUsers]);
+
+  const renderContent = () => {
+    if (searchQuery) {
+      if (searchType === 'users') {
+        return <UserListSearch users={users} />;
+      }
+      return (
+        <InfiniteScroll
+          dataLength={posts.length}
+          next={() => fetchPosts(page)}
+          hasMore={hasMore}
+          loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
+          endMessage={
+            <p className="text-center text-gray-400 mt-4">
+              <b>Učitali ste sve rezultate.</b>
+            </p>
+          }
+        >
+          <PostList posts={posts} />
+        </InfiniteScroll>
+      );
+    }
+
+    return (
+      <>
+        <PostOfTheWeek />
+        <InfiniteScroll
+          className="border-t-2 border-gray-400"
+          dataLength={posts.length}
+          next={() => fetchPosts(page)}
+          hasMore={hasMore}
+          loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
+          endMessage={
+            <p className="text-center text-gray-400 mt-4">
+              <b>Učitali ste sve objave.</b>
+            </p>
+          }
+        >
+          <PostList posts={posts} />
+        </InfiniteScroll>
+      </>
+    );
+  };
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
-      <div className="flex flex-row justify-between border-b-2 border-gray-400">
-        <div className="">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-2 border-gray-400 pb-8 mb-8">
+        <div>
           <h1 className="text-4xl font-bold">Dobrodošli na Blog Network!</h1>
           <p className="mt-4">
-            Ovo je početna stranica. Izaberite opciju iz navigacije ili
-            započnite sa kreiranjem!
+            Ovo je početna stranica. Izaberite opciju iz navigacije ili započnite sa kreiranjem!
           </p>
         </div>
 
-        <div className="text-center md:text-right mb-12">
+        <div className="text-center md:text-right mt-6 md:mt-0">
           <SignedIn>
             <Link to="/create-blog">
               <button className="py-3 px-6 rounded-lg bg-primary hover:bg-primary-accent text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -105,22 +171,13 @@ const HomePage = () => {
           </SignedOut>
         </div>
       </div>
+      {searchQuery && (
+        <h2 className="text-xl font-bold mb-6">
+          Rezultati pretrage za: "{searchQuery}"
+        </h2>
+      )}
 
-      <PostOfTheWeek />
-      <InfiniteScroll
-        className="border-t-2 border-gray-400"
-        dataLength={posts.length}
-        next={() => fetchPosts(page)}
-        hasMore={hasMore}
-        loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
-        endMessage={
-          <p className="text-center text-gray-400 mt-4">
-            <b>Učitali ste sve objave za date parametre.</b>
-          </p>
-        }
-      >
-        <PostList posts={posts} />
-      </InfiniteScroll>
+      {renderContent()}
     </div>
   );
 };

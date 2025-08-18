@@ -820,3 +820,26 @@ app.listen(port, () => {
   }, 5 * 60 * 1000);
   scheduleWeeklyJob(pool);
 });
+
+app.get("/api/public/search/users", async (req, res) => {
+  const { search } = req.query;
+
+  if (!search || search.trim() === "") {
+    return res.status(200).json([]);
+  }
+
+  try {
+    const query = `
+      SELECT id, username, profile_picture_url, first_name, last_name
+      FROM users
+      WHERE username ILIKE '%' || $1 || '%'
+      ORDER BY username
+      LIMIT 20; -- Ograničavamo broj rezultata radi boljih performansi
+    `;
+    const { rows } = await pool.query(query, [search]);
+    res.json(rows);
+  } catch (error) {
+    console.error("Greška pri pretrazi korisnika:", error);
+    res.status(500).json({ error: "Greška na serveru prilikom pretrage korisnika." });
+  }
+});

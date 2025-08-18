@@ -20,23 +20,33 @@ const Navbar = () => {
   const handleSearch = (query, filters = {}) => {
     const params = new URLSearchParams();
 
-    if (query) params.set("search", query);
-
-    if (filters.minLikes !== "") params.set("minLikes", filters.minLikes);
-    if (filters.maxLikes !== "") params.set("maxLikes", filters.maxLikes);
-    if (filters.minDateActive && filters.minDate)
-      params.set("minDate", filters.minDate);
-    if (filters.maxDateActive && filters.maxDate)
-      params.set("maxDate", filters.maxDate);
-    if (filters.tags && Array.isArray(filters.tags)) {
-      filters.tags.forEach((tag) => {
-        if (tag.trim() !== "") {
-          params.append("tags", tag.trim());
-        }
-      });
+    if (query) {
+      params.set("search", query);
+    } else {
+      navigate('/');
+      return;
     }
 
-    navigate(`/?${params.toString()}`);
+    if (filters.korisnici) {
+      params.set("type", "users");
+      navigate(`/?${params.toString()}`);
+    } else {
+      params.set("type", "posts");
+      
+      if (filters.minLikes !== "") params.set("minLikes", filters.minLikes);
+      if (filters.maxLikes !== "") params.set("maxLikes", filters.maxLikes);
+      if (filters.minDateActive && filters.minDate) params.set("minDate", filters.minDate);
+      if (filters.maxDateActive && filters.maxDate) params.set("maxDate", filters.maxDate);
+      if (filters.tags && Array.isArray(filters.tags)) {
+        filters.tags.forEach((tag) => {
+          if (tag.trim() !== "") {
+            params.append("tags", tag.trim());
+          }
+        });
+      }
+      
+      navigate(`/?${params.toString()}`);
+    }
   };
 
   const setTheme = (theme) => {
