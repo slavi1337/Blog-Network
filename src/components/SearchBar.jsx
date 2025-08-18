@@ -21,7 +21,6 @@ const SearchBar = ({ onSearch }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSearch(query, filters);
     const processedFilters = {
       ...filters,
       tags: filters.tags
