@@ -263,6 +263,32 @@ const BlogCreationPage = () => {
           setPostId(data.id);
           setCurrentStatus(data.status);
 
+          if (data.content) {
+            const existingUrls = Array.from(
+              data.content.matchAll(/src="https?:\/\/ik\.imagekit\.io\/[^"]+"/g)
+            ).map((match) => match[0].slice(5, -1));
+
+            if (existingUrls.length > 0) {
+              const detailsResponse = await fetch("/api/media/details", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ urls: existingUrls }),
+              });
+
+              if (detailsResponse.ok) {
+                const filesData = await detailsResponse.json();
+                const initialFilesMap = new Map();
+                filesData.forEach((file) =>
+                  initialFilesMap.set(file.url, file.size)
+                );
+                setUploadedFiles(initialFilesMap);
+              }
+            }
+          }
+
           if (data.status === "scheduled" && data.publish_at) {
             const utcDate = new Date(data.publish_at);
             const year = utcDate.getFullYear();
