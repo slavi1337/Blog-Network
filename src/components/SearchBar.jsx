@@ -44,31 +44,45 @@ const SearchBar = ({ onSearch }) => {
     }));
   };
 
+  const handleToggle = (mode) => {
+    setFilters((prev) => ({
+      ...prev,
+      korisnici: mode === "korisnici",
+      objave: mode === "objave"
+    }));
+  };
+
   return (
     <div className="relative">
       {showFilters && (
         <div className="absolute top-16 left-0 w-128 h-auto bg-white border border-gray-300 shadow-lg z-50 p-4">
           <div className="flex flex-col gap-4 text-gray-700">
-            <div className="flex flex-row gap-8">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="korisnici"
-                  name="korisnici"
-                  checked={filters.korisnici}
-                  onChange={handleFilterChange}
+<div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Prikaži:</span>
+              <div className="relative inline-flex items-center w-44 h-10 rounded-full p-1">
+                <div
+                  className={`absolute top-1 left-1 w-1/2 h-8 bg-primary rounded-full shadow transition-transform duration-200 ${
+                    filters.objave ? "translate-x-full" : "translate-x-0"
+                  }`}
                 />
-                <label htmlFor="korisnici">Korisnici</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="objave"
-                  name="objave"
-                  checked={filters.objave}
-                  onChange={handleFilterChange}
-                />
-                <label htmlFor="objave">Objave</label>
+                <button
+                  type="button"
+                  onClick={() => handleToggle("korisnici")}
+                  className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium ${
+                    filters.korisnici ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  Korisnici
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggle("objave")}
+                  className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium ${
+                    filters.objave ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  Objave
+                </button>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
