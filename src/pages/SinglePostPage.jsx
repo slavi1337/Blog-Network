@@ -390,12 +390,12 @@ const SinglePostPage = () => {
           <h1 className="text-4xl font-extrabold mb-2 text-gray-900">
             {translatedTitle || post.title}
           </h1>
-          <div className="text-gray-500 text-sm mb-6 flex items-center space-x-4">
+          <div className="text-gray-500 text-sm mb-6 flex items-center flex-wrap gap-x-4">
             <span>
               Autor:{" "}
               <Link
                 to={`/profile/${post.author_username}`}
-                className="font-semibold hover:text-primary-accent"
+                className="font-semibold hover:text-orange-600"
               >
                 {post.author_username}
               </Link>
