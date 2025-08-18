@@ -468,6 +468,13 @@ const postsRouter = (pool, getInternalUserId) => {
         `;
       await pool.query(query, [userId, postId]);
 
+      const updateViewCountQuery = `
+            UPDATE posts 
+            SET view_count = view_count + 1 
+            WHERE id = $1;
+        `;
+      await pool.query(updateViewCountQuery, [postId]);
+
       res.status(201).json({ message: "Istorija čitanja ažurirana." });
     } catch (error) {
       console.error("Greška pri beleženju istorije čitanja:", error);
