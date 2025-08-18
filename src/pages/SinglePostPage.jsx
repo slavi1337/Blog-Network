@@ -548,6 +548,21 @@ const SinglePostPage = () => {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-4"> Tagovi:
+        {post.tags &&
+          post.tags
+            .split(" ")
+            .filter(Boolean)
+            .map((tag, index) => (
+              <span
+                key={index}
+                className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-sm"
+              >
+                #{tag}
+              </span>
+            ))}
+      </div>
+
       <div
         className="prose lg:prose-xl max-w-none mb-8"
         dangerouslySetInnerHTML={{ __html: translatedContent || post.content }}
