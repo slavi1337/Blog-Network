@@ -428,7 +428,7 @@ const usersRouter = (pool, getInternalUserId) => {
         delete profileData.follow_status;
 
         const postsQuery = `
-            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at, u.username as author_username, p.is_pinned
+            SELECT p.id, p.title, p.slug, p.cover_media_id, p.created_at, u.username as author_username, p.is_pinned, p.view_count
             FROM posts p
             JOIN users u ON p.author_id = u.id
             WHERE p.author_id = $1 AND p.status = 'published'
