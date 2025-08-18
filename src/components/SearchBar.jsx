@@ -4,7 +4,7 @@ const SearchBar = ({ onSearch }) => {
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    korisnici: true,
+    korisnici: false,
     objave: true,
     minLikes: "",
     maxLikes: "",
