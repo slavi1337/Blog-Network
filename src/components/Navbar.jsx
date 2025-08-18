@@ -12,6 +12,7 @@ const Navbar = () => {
   const { togglePanel } = useSidePanel();
   const [open, setOpen] = useState(false);
   const { user } = useUser();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -48,25 +49,48 @@ const Navbar = () => {
     localStorage.setItem("theme", theme);
   };
 
-  const UserActions = () => {
+  const UserActions = ({ onLinkClick }) => {
     if (!user) return null;
 
     return (
       <>
         <Link
           to={`/profile/${user.username}`}
-          className="hover:text-primary transition-colors font-bold"
-          onClick={() => setOpen(false)} // Zatvori mobilni meni na klik
+          className="hover:text-primary-accent transition-colors font-bold"
+          onClick={onLinkClick} // Zatvori mobilni meni na klik
         >
           Moj Profil
         </Link>
-        <div onClick={() => setOpen(false)}>
+        <div onClick={onLinkClick}>
           {" "}
           <UserButton afterSignOutUrl="/" />
         </div>
       </>
     );
   };
+
+  const ThemeSelector = () => (
+    <div className="py-1">
+      <a
+        onClick={() => setTheme("theme-blog-network")}
+        className="block px-4 py-2 text-sm text-textcolor hover:bg-background cursor-pointer select-none"
+      >
+        Blog Network
+      </a>
+      <a
+        onClick={() => setTheme("theme-etfbl")}
+        className="block px-4 py-2 text-sm text-textcolor hover:bg-background cursor-pointer select-none"
+      >
+        ETF-BL
+      </a>
+      <a
+        onClick={() => setTheme("theme-dark")}
+        className="block px-4 py-2 text-sm text-textcolor hover:bg-background cursor-pointer select-none"
+      >
+        Dark
+      </a>
+    </div>
+  );
 
   return (
     <div className="w-full h-16 md:h-20 flex items-center justify-between relative">
@@ -89,40 +113,20 @@ const Navbar = () => {
         >
           <button
             onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-            className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-primary text-sm font-bold text-textcolor hover:bg-primary_accent"
+            className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-primary text-sm font-bold text-textcolor hover:bg-background"
           >
             Teme
           </button>
           {themeMenuOpen && (
             <div className="absolute top-12 z-10 mt-2 w-40 rounded-md shadow-lg bg-primary ring-1 ring-black ring-opacity-5">
-              <div className="py-1">
-                <a
-                  onClick={() => setTheme("theme-blog-network")}
-                  className="block px-4 py-2 text-sm text-textcolor hover:bg-background select-none cursor-pointer"
-                >
-                  Blog Network
-                </a>
-                <a
-                  onClick={() => setTheme("theme-etfbl")}
-                  className="block px-4 py-2 text-sm text-textcolor hover:bg-background select-none cursor-pointer"
-                >
-                  ETF-BL
-                </a>
-                <a
-                  onClick={() => setTheme("theme-dark")}
-                  className="block px-4 py-2 text-sm text-textcolor hover:bg-background select-none cursor-pointer"
-                >
-                  Dark
-                </a>
-              </div>
+              <ThemeSelector />
             </div>
           )}
         </div>
-        <NavLinks />
         <SignedIn>
           <div className="flex items-center gap-8">
             <NotificationBell />
-            <UserActions />
+            <UserActions onLinkClick={() => {}} />
           </div>
         </SignedIn>
         <SignedOut>
@@ -136,7 +140,7 @@ const Navbar = () => {
         {/* Dugme za otvaranje side panela */}
         <button
           onClick={togglePanel}
-          className="p-2 rounded-full hover:bg-gray-200"
+          className="p-2 rounded-full hover:bg-background"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -155,11 +159,33 @@ const Navbar = () => {
         </button>
       </div>
 
-      <div className="md:hidden flex items-center">
+      <div className="md:hidden flex items-center gap-2">
         <button
-          onClick={togglePanel}
-          className="p-2 rounded-full hover:bg-gray-200 mr-2"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          className="p-2"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-textcolor"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+            />
+          </svg>
+        </button>
+
+        <SignedIn>
+          <NotificationBell />
+        </SignedIn>
+
+        {/* Dugme za Side Panel (tri linije) */}
+        <button onClick={togglePanel} className="p-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6 text-textcolor"
@@ -175,39 +201,35 @@ const Navbar = () => {
             />
           </svg>
         </button>
-        <UserButton afterSignOutUrl="/" />
       </div>
 
-      {/* Mobilni Meni */}
-      <div className="md:hidden">
-        <button
-          className="cursor-pointer text-3xl select-none font-bold px-4 z-20"
-          onClick={() => setOpen((prev) => !prev)}
-        >
-          {open ? "🗙" : "☰"}
-        </button>
-
-        <div
-          className={`absolute top-0 left-0 w-full h-screen bg-[#e6e6e6] flex flex-col items-center justify-center gap-8 font-bold text-2xl z-10 transition-transform duration-300 ease-in-out ${
-            open ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <SignedIn>
-            <div className="flex items-center gap-8">
-              <NotificationBell />
-
-              <UserActions />
+      {/* Dropdown za mobilni meni */}
+      {mobileMenuOpen && (
+        <div className="absolute top-16 right-0 w-full bg-background p-4 shadow-lg md:hidden z-30 border-t border-border-main">
+          <SearchBar onSearch={handleSearch} />
+          <div className="mt-4 border-t border-border-main pt-4 space-y-4">
+            <div className="text-textcolor">
+              <p className="font-bold mb-2">Izaberi Temu</p>
+              <div className="bg-primary rounded-md shadow-inner">
+                <ThemeSelector />
+              </div>
             </div>
-          </SignedIn>
-          <SignedOut>
-            <Link to="/sign-in" onClick={() => setOpen(false)}>
-              <button className="py-2 px-4 rounded-3xl bg-primary hover:bg-primary-dark text-white transition-all duration-300">
-                Login
-              </button>
-            </Link>
-          </SignedOut>
+
+            <SignedIn>
+              <div className="flex flex-col items-center gap-4 border-t border-border-main pt-4">
+                <UserActions onLinkClick={() => setMobileMenuOpen(false)} />
+              </div>
+            </SignedIn>
+            <SignedOut>
+              <Link to="/sign-in" onClick={() => setMobileMenuOpen(false)}>
+                <button className="w-full py-2 px-3 text-lg rounded-lg bg-primary hover:bg-primary-accent text-textcolor">
+                  Login
+                </button>
+              </Link>
+            </SignedOut>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
