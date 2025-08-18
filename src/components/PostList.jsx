@@ -104,6 +104,7 @@ const PostList = ({ posts }) => {
           {/* TAGOVI */}
           {post.tags && post.tags.trim() !== "" && (
             <div className="mt-2 flex flex-wrap gap-2">
+              Tagovi: 
               {post.tags.split(", ").map((tag, index) => (
                 <button
                   key={index}
