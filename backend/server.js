@@ -112,7 +112,7 @@ app.get("/api/public/posts", async (req, res) => {
     const postsQuery = `
       SELECT 
         p.id, p.title, p.slug, p.content, p.created_at,
-        u.username AS author_username,
+        u.username AS author_username, p.view_count,
         c.name AS category_name,
         (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score
       FROM posts p
@@ -225,6 +225,7 @@ app.get("/api/public/search", async (req, res) => {
     p.created_at,
     u.username AS author_username,
     c.name AS category_name,
+    p.view_count,
     COALESCE(SUM(v.vote_type), 0) AS vote_score,
     COALESCE(STRING_AGG(t.name, ', ' ORDER BY t.name), '') AS tags
   FROM posts p
@@ -281,7 +282,7 @@ app.get("/api/public/posts/:slug", async (req, res) => {
   try {
     const postQuery = `
       SELECT p.id, p.title, p.slug, p.content, p.created_at, p.updated_at, p.is_pinned,
-             u.username AS author_username, c.name AS category_name, c.id AS category_id,
+             u.username AS author_username, c.name AS category_name, c.id AS category_id, p.view_count,
              (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
              STRING_AGG(t.name, ' ') AS tags
       FROM posts p
