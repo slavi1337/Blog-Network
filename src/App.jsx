@@ -78,7 +78,7 @@ const HomePage = () => {
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
-      <div className="flex flex-row justify-between border-b-2 border-gray-300">
+      <div className="flex flex-row justify-between border-b-2 border-gray-400">
         <div className="">
           <h1 className="text-4xl font-bold">Dobrodošli na Blog Network!</h1>
           <p className="mt-4">
@@ -108,6 +108,7 @@ const HomePage = () => {
 
       <PostOfTheWeek />
       <InfiniteScroll
+        className="border-t-2 border-gray-400"
         dataLength={posts.length}
         next={() => fetchPosts(page)}
         hasMore={hasMore}

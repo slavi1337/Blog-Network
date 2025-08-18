@@ -39,7 +39,7 @@ const PostOfTheWeek = () => {
     post.content.replace(/<[^>]+>/g, "").substring(0, 250) + "...";
 
   return (
-    <div className="mt-8 text-center">
+    <div className="mt-8 mb-8 text-center">
       <h1 className="text-3xl font-bold text-primary mb-6">Objava sedmice!</h1>
       <div className="flex flex-col md:flex-row border-4 border-primary p-4 mt-4 bg-gray-100">
         <div className="text-center md:text-left w-full md:w-3/4">
