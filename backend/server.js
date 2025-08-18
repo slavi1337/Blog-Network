@@ -706,6 +706,47 @@ app.get("/api/upload-auth", (req, res) => {
   res.json(authenticationParameters);
 });
 
+// racunanje velicina koja je uploadana za blog
+app.post("/api/media/details", ClerkExpressWithAuth(), async (req, res) => {
+  const { urls } = req.body;
+
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return res.status(200).json([]);
+  }
+
+  try {
+    const detailPromises = urls.map(async (url) => {
+      try {
+        const fileName = url.substring(url.lastIndexOf("/") + 1);
+
+        const list = await imagekit.listFiles({
+          searchQuery: `name="${fileName}"`,
+        });
+
+        if (list && list.length === 1) {
+          const file = list[0];
+          return {
+            url: file.url,
+            size: file.size,
+          };
+        }
+        return null;
+      } catch (e) {
+        console.error(`Greška pri dohvatanju detalja za ${url}:`, e);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(detailPromises);
+
+    const successfulDetails = results.filter((item) => item !== null);
+
+    res.status(200).json(successfulDetails);
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri provjeri veličine fajlova." });
+  }
+});
+
 app.use(express.static(path.join(__dirname, "../dist")));
 
 // Endpoint za webhook
