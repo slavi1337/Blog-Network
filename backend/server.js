@@ -706,7 +706,7 @@ app.get("/api/upload-auth", (req, res) => {
   res.json(authenticationParameters);
 });
 
-// racunanje velicina koja je uploadana za blog
+// racunanje velicine koja je uploadana za blog
 app.post("/api/media/details", ClerkExpressWithAuth(), async (req, res) => {
   const { urls } = req.body;
 
@@ -743,6 +743,7 @@ app.post("/api/media/details", ClerkExpressWithAuth(), async (req, res) => {
 
     res.status(200).json(successfulDetails);
   } catch (error) {
+    console.error("Glavna greška pri dohvatanju detalja sa ImageKit-a:", error);
     res.status(500).json({ error: "Greška pri provjeri veličine fajlova." });
   }
 });
