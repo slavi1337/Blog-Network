@@ -142,8 +142,6 @@ app.get("/api/public/search", async (req, res) => {
   const limit = 8;
   const offset = (page - 1) * limit;
 
-  const tags = req.query.tags;
-
   const { search, minLikes, maxLikes, minDate, maxDate, tags } = req.query;
 
   let params = [];
