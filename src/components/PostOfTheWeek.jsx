@@ -41,12 +41,7 @@ const PostOfTheWeek = () => {
   return (
     <div className="mt-8 text-center">
       <h1 className="text-3xl font-bold text-primary mb-6">Objava sedmice!</h1>
-      <div className="flex flex-col md:flex-row border-4 border-primary p-4 mt-4">
-        <img
-          src="/vite.svg"
-          alt="Cover"
-          className="w-full md:w-1/4 mr-8 mb-4 md:mb-0"
-        />
+      <div className="flex flex-col md:flex-row border-4 border-primary p-4 mt-4 bg-gray-100">
         <div className="text-center md:text-left w-full md:w-3/4">
           <div className="mb-4">
             <Link
