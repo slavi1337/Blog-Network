@@ -401,7 +401,7 @@ const usersRouter = (pool, getInternalUserId) => {
 
         const profileQuery = `
             SELECT
-                u.id, u.username, u.first_name, u.last_name, u.profile_picture_url, u.created_at,p.view_count,
+                u.id, u.username, u.first_name, u.last_name, u.profile_picture_url, u.created_at,
                 (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id AND p.status = 'published') AS post_count,
                 (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
                 (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count,
