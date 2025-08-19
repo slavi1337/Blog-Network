@@ -221,6 +221,7 @@ app.get("/api/public/search", async (req, res) => {
   const postsQuery = `SELECT 
       p.id, p.title, p.slug, p.created_at, p.view_count,
       u.username AS author_username,
+      u.profile_picture_url AS author_profile_picture_url,
       c.name AS category_name,
       (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
       (SELECT COALESCE(STRING_AGG(t.name, ', '), '') FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id) AS tags
