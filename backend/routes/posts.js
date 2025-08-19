@@ -37,7 +37,8 @@ const postsRouter = (pool, getInternalUserId) => {
     }
     if (
       containsCensoredWord(title, badWords) ||
-      containsCensoredWord(content, badWords)
+      containsCensoredWord(content, badWords) ||
+      containsCensoredWord(tags, badWords)
     ) {
       return res
         .status(400)
