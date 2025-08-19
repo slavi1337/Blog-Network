@@ -4,7 +4,7 @@ const SearchBar = ({ onSearch }) => {
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [filters, setFilters] = useState({
+  const initialFiltersState = {
     korisnici: false,
     objave: true,
     category: "",
@@ -17,7 +17,8 @@ const SearchBar = ({ onSearch }) => {
     tags: "",
     sortBy: "createdAt",
     sortOrder: "desc"
-  });
+  };
+  const [filters, setFilters] = useState(initialFiltersState);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -130,22 +131,22 @@ const handleCategoryChange = (e) => {
     onSearch(query, processedFilters);
   };
 
-  const handleSortToggle = () => {
-    const newSortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc';
-
-    const updatedFilters = {
-      ...filters,
-      sortOrder: newSortOrder
-    };
-    
-    setFilters(updatedFilters);
-
+  const handleResetFilters = () => {
+    setFilters(initialFiltersState);
     const processedFilters = {
-        ...updatedFilters,
-        tags: updatedFilters.tags
-            .split(' ')
-            .map(tag => tag.trim())
-            .filter(tag => tag.length > 0)
+      ...initialFiltersState,
+      tags: []
+    };
+    onSearch(query, processedFilters);
+  };
+
+  const handleRefreshSearch = () => {
+    const processedFilters = {
+      ...filters,
+      tags: filters.tags
+        .split(' ')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0)
     };
     onSearch(query, processedFilters);
   };
@@ -247,6 +248,7 @@ const handleCategoryChange = (e) => {
                   type="number"
                   name="minLikes"
                   id="minLikes"
+                  min={0}
                   value={filters.minLikes}
                   onChange={handleFilterChange}
                   className="px-2 py-1 border border-gray-300 rounded-md"
@@ -258,6 +260,7 @@ const handleCategoryChange = (e) => {
                   type="number"
                   name="maxLikes"
                   id="maxLikes"
+                  min={0}
                   value={filters.maxLikes}
                   onChange={handleFilterChange}
                   className="px-2 py-1 border border-gray-300 rounded-md"
@@ -321,6 +324,24 @@ const handleCategoryChange = (e) => {
                 className="px-2 py-1 border border-gray-300 rounded-md"
               />
             </div>
+
+            <div className="flex justify-between border-t border-gray-200 pt-4">
+                <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:primary_accent"
+                >
+                    Poništi filtere
+                </button>
+                <button
+                    type="button"
+                    onClick={handleRefreshSearch}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:primary_accent"
+                >
+                    Osvježi pretragu
+                </button>
+            </div>
+
           </div>
         </div>
       )}
