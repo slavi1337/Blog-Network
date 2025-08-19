@@ -70,11 +70,11 @@ const getInternalUserId = async (clerkId) => {
 
 app.use("/api/posts", postsRouter(pool, getInternalUserId));
 
-const profileRouter = usersRouter(pool, getInternalUserId);
-const publicProfileRouter = usersRouter(pool, getInternalUserId);
+const userRouterInstance = usersRouter(pool, getInternalUserId);
 
-app.use("/api/profile", profileRouter); // Gađa rute kao /api/profile/drafts
-app.use("/api/profiles", publicProfileRouter); // Gađa rute kao /api/profiles/blognetworkljubitelj9000
+app.use("/api/profile", userRouterInstance); // Gađa rute kao /api/profile/drafts
+app.use("/api/profiles", userRouterInstance); // Gađa rute kao /api/profiles/blognetworkljubitelj9000
+app.use("/api/users", userRouterInstance);
 
 app.get("/api/public/posts/featured", async (req, res) => {
   try {
@@ -142,7 +142,17 @@ app.get("/api/public/search", async (req, res) => {
   const limit = 8;
   const offset = (page - 1) * limit;
 
-  const { search, category, minLikes, maxLikes, minDate, maxDate, tags, sortBy, sortOrder } = req.query;
+  const {
+    search,
+    category,
+    minLikes,
+    maxLikes,
+    minDate,
+    maxDate,
+    tags,
+    sortBy,
+    sortOrder,
+  } = req.query;
 
   let params = [];
   const whereClauses = ["p.status = 'published'"];
@@ -204,19 +214,18 @@ app.get("/api/public/search", async (req, res) => {
   }
 
   const whereClause = `WHERE ${whereClauses.join(" AND ")}`;
-  
+
   const allowedSortBy = {
     createdAt: "p.created_at",
     voteScore: "vote_score",
-    viewCount: "p.view_count"
+    viewCount: "p.view_count",
   };
 
-  const sortColumn = allowedSortBy[sortBy] || "p.created_at"; 
+  const sortColumn = allowedSortBy[sortBy] || "p.created_at";
 
-  const order = sortOrder && sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const order = sortOrder && sortOrder.toLowerCase() === "asc" ? "ASC" : "DESC";
 
   const orderByClause = `ORDER BY ${sortColumn} ${order}`;
-
 
   const postsQuery = `SELECT 
       p.id, p.title, p.slug, p.created_at, p.view_count,
@@ -860,6 +869,8 @@ app.get("/api/public/search/users", async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("Greška pri pretrazi korisnika:", error);
-    res.status(500).json({ error: "Greška na serveru prilikom pretrage korisnika." });
+    res
+      .status(500)
+      .json({ error: "Greška na serveru prilikom pretrage korisnika." });
   }
 });
