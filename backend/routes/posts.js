@@ -621,6 +621,77 @@ const postsRouter = (pool, getInternalUserId) => {
     }
   });
 
+  router.get("/foryou", ClerkExpressWithAuth(), async (req, res) => {
+
+        if (!req.auth.userId) {
+            return res.status(401).json({ error: "Niste autorizovani." });
+        }
+
+        const clerkId = req.auth.userId;
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = 8;
+        const offset = (page - 1) * limit;
+
+        try {
+            const internalUserId = await getInternalUserId(clerkId);
+            if (!internalUserId) {
+                return res.status(404).json({ error: "Korisnik nije pronađen." });
+            }
+
+        const commonWhereClause = `
+            WHERE
+                p.status = 'published'
+                AND (
+                    -- USLOV 1: Dohvati objave autora koje korisnik prati
+                    p.author_id IN (
+                        SELECT followed_id FROM followers WHERE follower_id = $1
+                    )
+                    OR
+                    -- USLOV 2: Dohvati objave koje imaju tag koji interesuje korisnika
+                    EXISTS (
+                        SELECT 1
+                        FROM post_tags pt
+                        JOIN user_interested_tags uit ON pt.tag_id = uit.tag_id
+                        WHERE pt.post_id = p.id AND uit.user_id = $1
+                    )
+                )
+        `;
+
+        const postsQuery = `
+            SELECT
+                p.id, p.title, p.slug, p.created_at, p.view_count, p.is_pinned,
+                u.username AS author_username,
+                u.profile_picture_url AS author_profile_picture_url,
+                c.name AS category_name,
+                (SELECT COALESCE(SUM(vote_type), 0) FROM post_votes WHERE post_id = p.id) AS vote_score,
+                (SELECT STRING_AGG(t.name, ', ') FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id) AS tags
+            FROM posts p
+            JOIN users u ON p.author_id = u.id
+            JOIN categories c ON p.category_id = c.id
+            ${commonWhereClause}
+            ORDER BY p.created_at DESC
+            LIMIT $2 OFFSET $3
+        `;
+
+        const { rows } = await pool.query(postsQuery, [internalUserId, limit, offset]);
+
+        const countQuery = `
+            SELECT COUNT(*) FROM posts p ${commonWhereClause}
+        `;
+        
+        const countResult = await pool.query(countQuery, [internalUserId]);
+        const total = parseInt(countResult.rows[0].count);
+            
+            const hasMore = offset + limit < total;
+            res.json({ posts: rows, hasMore });
+
+        } catch (error) {
+            console.error("Greška pri dohvatanju 'For You' objava:", error);
+            res.status(500).json({ error: "Greška na serveru." });
+        }
+    });
+
   return router;
 };
 
