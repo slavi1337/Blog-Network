@@ -27,6 +27,7 @@ import DraftsPage from "./pages/DraftsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminIssueDetailsPage from "./pages/AdminIssueDetailsPage";
+import ForYouPage from "./pages/ForYouPage.jsx";
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
@@ -236,6 +237,7 @@ const App = () => {
 
         <Route path="about" element={<AboutPage />} />
         <Route path="report-issue" element={<ReportIssuePage />} />
+        <Route path="for-you" element={<ForYouPage />}/>
 
         <Route path="profile/:username" element={<ProfilePage />}>
           <Route index element={<ProfilePosts />} />
