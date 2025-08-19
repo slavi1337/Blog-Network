@@ -26,7 +26,7 @@ const BellIcon = ({ hasUnread }) => (
 
 const NotificationBell = () => {
   const { getToken } = useAuth();
-  const { isSignedIn } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -34,9 +34,10 @@ const NotificationBell = () => {
   const [isMarking, setIsMarking] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
-    if (!isSignedIn) return;
+    if (!isSignedIn || !isLoaded) return;
     try {
       const token = await getToken();
+      if (!token) return;
       const res = await fetch("/api/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -46,7 +47,7 @@ const NotificationBell = () => {
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     }
-  }, [getToken, isSignedIn]);
+  }, [getToken, isSignedIn, isLoaded]);
 
   useEffect(() => {
     fetchNotifications();

@@ -16,14 +16,14 @@ const SearchBar = ({ onSearch }) => {
     maxDate: "",
     tags: "",
     sortBy: "createdAt",
-    sortOrder: "desc"
+    sortOrder: "desc",
   };
   const [filters, setFilters] = useState(initialFiltersState);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/categories');
+        const response = await fetch("/api/categories");
         if (response.ok) {
           const data = await response.json();
           setCategories(data);
@@ -69,38 +69,43 @@ const SearchBar = ({ onSearch }) => {
   const handleToggle = (mode) => {
     const updatedFilters = {
       ...filters,
-      ...prev,
       korisnici: mode === "korisnici",
-      objave: mode === "objave"
+      objave: mode === "objave",
     };
-    
+
     setFilters(updatedFilters);
 
     const processedFilters = {
       ...updatedFilters,
-      tags: updatedFilters.tags.split(' ').map(tag => tag.trim()).filter(Boolean)
+      tags: updatedFilters.tags
+        .split(" ")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
     };
     onSearch(query, processedFilters);
   };
 
   const handleSortChange = (newSortBy) => {
-    let newSortOrder = 'desc';
+    let newSortOrder = "desc";
 
     if (filters.sortBy === newSortBy) {
-      newSortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc';
+      newSortOrder = filters.sortOrder === "desc" ? "asc" : "desc";
     }
 
     const updatedFilters = {
       ...filters,
       sortBy: newSortBy,
-      sortOrder: newSortOrder
+      sortOrder: newSortOrder,
     };
 
     setFilters(updatedFilters);
 
     const processedFilters = {
       ...updatedFilters,
-      tags: updatedFilters.tags.split(' ').map(tag => tag.trim()).filter(Boolean)
+      tags: updatedFilters.tags
+        .split(" ")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
     };
     onSearch(query, processedFilters);
   };
@@ -108,25 +113,25 @@ const SearchBar = ({ onSearch }) => {
   const sortPositions = {
     createdAt: "translate-x-0",
     voteScore: "translate-x-full",
-    viewCount: "translate-x-[200%]"
+    viewCount: "translate-x-[200%]",
   };
 
-const handleCategoryChange = (e) => {
+  const handleCategoryChange = (e) => {
     const { value } = e.target;
 
     const updatedFilters = {
       ...filters,
-      category: value
+      category: value,
     };
 
     setFilters(updatedFilters);
-    
+
     const processedFilters = {
-        ...updatedFilters,
-        tags: updatedFilters.tags
-            .split(' ')
-            .map(tag => tag.trim())
-            .filter(tag => tag.length > 0)
+      ...updatedFilters,
+      tags: updatedFilters.tags
+        .split(" ")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0),
     };
     onSearch(query, processedFilters);
   };
@@ -135,7 +140,7 @@ const handleCategoryChange = (e) => {
     setFilters(initialFiltersState);
     const processedFilters = {
       ...initialFiltersState,
-      tags: []
+      tags: [],
     };
     onSearch(query, processedFilters);
   };
@@ -144,9 +149,9 @@ const handleCategoryChange = (e) => {
     const processedFilters = {
       ...filters,
       tags: filters.tags
-        .split(' ')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0)
+        .split(" ")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0),
     };
     onSearch(query, processedFilters);
   };
@@ -186,12 +191,14 @@ const handleCategoryChange = (e) => {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
-              <label htmlFor="category" className="text-sm font-medium">Kategorija:</label>
+              <label htmlFor="category" className="text-sm font-medium">
+                Kategorija:
+              </label>
               <select
                 name="category"
                 id="category"
                 value={filters.category}
-                onChange={handleCategoryChange} 
+                onChange={handleCategoryChange}
                 className="px-2 py-1 border border-gray-300 rounded-md bg-white text-gray-700"
               >
                 <option value="">Sve kategorije</option>
@@ -216,8 +223,17 @@ const handleCategoryChange = (e) => {
                   onClick={() => handleSortChange("createdAt")}
                   className="relative z-10 flex items-center justify-center text-sm font-medium transition-colors"
                 >
-                  <span className={filters.sortBy === 'createdAt' ? 'text-white' : 'text-gray-600'}>
-                    {filters.sortBy === 'createdAt' && filters.sortOrder === 'desc' ? 'Najnovije' : 'Najstarije'}
+                  <span
+                    className={
+                      filters.sortBy === "createdAt"
+                        ? "text-white"
+                        : "text-gray-600"
+                    }
+                  >
+                    {filters.sortBy === "createdAt" &&
+                    filters.sortOrder === "desc"
+                      ? "Najnovije"
+                      : "Najstarije"}
                   </span>
                 </button>
                 <button
@@ -225,8 +241,17 @@ const handleCategoryChange = (e) => {
                   onClick={() => handleSortChange("voteScore")}
                   className="relative z-10 flex items-center justify-center text-sm font-medium transition-colors"
                 >
-                  <span className={filters.sortBy === 'voteScore' ? 'text-white' : 'text-gray-600'}>
-                    {filters.sortBy === 'voteScore' && filters.sortOrder === 'desc' ? 'Najviše glasova' : 'Najmanje glasova'}
+                  <span
+                    className={
+                      filters.sortBy === "voteScore"
+                        ? "text-white"
+                        : "text-gray-600"
+                    }
+                  >
+                    {filters.sortBy === "voteScore" &&
+                    filters.sortOrder === "desc"
+                      ? "Najviše glasova"
+                      : "Najmanje glasova"}
                   </span>
                 </button>
                 <button
@@ -234,8 +259,17 @@ const handleCategoryChange = (e) => {
                   onClick={() => handleSortChange("viewCount")}
                   className="relative z-10 flex items-center justify-center text-sm font-medium transition-colors"
                 >
-                  <span className={filters.sortBy === 'viewCount' ? 'text-white' : 'text-gray-600'}>
-                    {filters.sortBy === 'viewCount' && filters.sortOrder === 'desc' ? 'Najviše pregleda' : 'Najmanje pregleda'}
+                  <span
+                    className={
+                      filters.sortBy === "viewCount"
+                        ? "text-white"
+                        : "text-gray-600"
+                    }
+                  >
+                    {filters.sortBy === "viewCount" &&
+                    filters.sortOrder === "desc"
+                      ? "Najviše pregleda"
+                      : "Najmanje pregleda"}
                   </span>
                 </button>
               </div>
@@ -243,7 +277,9 @@ const handleCategoryChange = (e) => {
 
             <div className="flex flex-col sm:flex-row gap-4 border-t border-gray-200 pt-4">
               <div className="flex flex-col">
-                <label htmlFor="minLikes" className="text-sm">Minimalan broj lajkova</label>
+                <label htmlFor="minLikes" className="text-sm">
+                  Minimalan broj lajkova
+                </label>
                 <input
                   type="number"
                   name="minLikes"
@@ -255,7 +291,9 @@ const handleCategoryChange = (e) => {
                 />
               </div>
               <div className="flex flex-col">
-                <label htmlFor="maxLikes" className="text-sm">Maksimalan broj lajkova</label>
+                <label htmlFor="maxLikes" className="text-sm">
+                  Maksimalan broj lajkova
+                </label>
                 <input
                   type="number"
                   name="maxLikes"
@@ -313,7 +351,9 @@ const handleCategoryChange = (e) => {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="tags" className="text-sm">Tagovi (razdvojeni razmakom)</label>
+              <label htmlFor="tags" className="text-sm">
+                Tagovi (razdvojeni razmakom)
+              </label>
               <input
                 type="text"
                 name="tags"
@@ -326,22 +366,21 @@ const handleCategoryChange = (e) => {
             </div>
 
             <div className="flex justify-between border-t border-gray-200 pt-4">
-                <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:primary_accent"
-                >
-                    Poništi filtere
-                </button>
-                <button
-                    type="button"
-                    onClick={handleRefreshSearch}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:primary_accent"
-                >
-                    Osvježi pretragu
-                </button>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:primary_accent"
+              >
+                Poništi filtere
+              </button>
+              <button
+                type="button"
+                onClick={handleRefreshSearch}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:primary_accent"
+              >
+                Osvježi pretragu
+              </button>
             </div>
-
           </div>
         </div>
       )}

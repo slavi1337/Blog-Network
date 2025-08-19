@@ -388,6 +388,47 @@ const usersRouter = (pool, getInternalUserId) => {
     }
   });
 
+  // iskljucivanje/ukljucivanje notifikacija
+  router.put(
+    "/:userId/follow/notifications",
+    ClerkExpressWithAuth(),
+    async (req, res) => {
+      const followerClerkId = req.auth.userId;
+      const { userId: followedId } = req.params;
+      const { enabled } = req.body;
+
+      if (typeof enabled !== "boolean") {
+        return res
+          .status(400)
+          .json({ error: 'Polje "enabled" mora biti boolean.' });
+      }
+
+      try {
+        const followerId = await getInternalUserId(followerClerkId);
+        if (!followerId)
+          return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+        const result = await pool.query(
+          "UPDATE followers SET notifications_enabled = $1 WHERE follower_id = $2 AND followed_id = $3",
+          [enabled, followerId, followedId]
+        );
+
+        if (result.rowCount === 0) {
+          return res
+            .status(404)
+            .json({ error: "Veza praćenja nije pronađena." });
+        }
+
+        res
+          .status(200)
+          .json({ message: "Podešavanja notifikacija ažurirana." });
+      } catch (error) {
+        console.error("Greška pri ažuriranju notifikacija:", error);
+        res.status(500).json({ error: "Greška na serveru." });
+      }
+    }
+  );
+
   // DOHVATANJE JAVNOG PROFILA -> GET /api/profiles/:username - !!!! provjeriti
   router.get(
     "/:username",
