@@ -22,9 +22,6 @@ const Navbar = () => {
 
     if (query) {
       params.set("search", query);
-    } else {
-      navigate('/');
-      return;
     }
 
     if (filters.korisnici) {
@@ -37,12 +34,17 @@ const Navbar = () => {
       if (filters.maxLikes !== "") params.set("maxLikes", filters.maxLikes);
       if (filters.minDateActive && filters.minDate) params.set("minDate", filters.minDate);
       if (filters.maxDateActive && filters.maxDate) params.set("maxDate", filters.maxDate);
+
       if (filters.tags && Array.isArray(filters.tags)) {
         filters.tags.forEach((tag) => {
           if (tag.trim() !== "") {
             params.append("tags", tag.trim());
           }
         });
+      }
+
+      if (filters.sortOrder) {
+        params.set("sort", filters.sortOrder);
       }
       
       navigate(`/?${params.toString()}`);

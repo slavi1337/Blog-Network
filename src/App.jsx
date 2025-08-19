@@ -41,9 +41,12 @@ const HomePage = () => {
   const minDate = searchParams.get("minDate") || "";
   const maxDate = searchParams.get("maxDate") || "";
   const tags = searchParams.getAll("tags");
+  const sortOrder = searchParams.get("sort") || "desc";
+  
+  const stringifiedTags = JSON.stringify(tags);
 
-  const fetchPosts = useCallback(async (pageToFetch, isNewSearch = false) => {
-    try {
+  useEffect(() => {
+    const performSearch = async () => {
       const params = new URLSearchParams();
 
       if (searchQuery) params.append("search", searchQuery);
@@ -53,19 +56,52 @@ const HomePage = () => {
       if (maxDate) params.append("maxDate", maxDate);
       tags.forEach(tag => params.append("tags", tag));
 
-      params.append("page", pageToFetch);
+      params.append("sort", sortOrder);
+      params.append("page", "1");
+
+      try {
+        const res = await fetch(`/api/public/search?${params.toString()}`);
+        const data = await res.json();
+        
+        setPosts(data.posts || []);
+        setHasMore(data.hasMore);
+        setPage(2);
+      } catch (error) {
+        console.error("Greška prilikom dohvatanja postova:", error);
+      }
+    };
+    
+    if (searchType === 'users') {
+      setPosts([]);
+      setHasMore(false);
+    } else {
+      performSearch();
+    }
+  }, [searchQuery, searchType, minLikes, maxLikes, minDate, maxDate, stringifiedTags, sortOrder]);
+
+const fetchMorePosts = async () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.append("search", searchQuery);
+    if (minLikes) params.append("minLikes", minLikes);
+    if (maxLikes) params.append("maxLikes", maxLikes);
+    if (minDate) params.append("minDate", minDate);
+    if (maxDate) params.append("maxDate", maxDate);
+    tags.forEach(tag => params.append("tags", tag));
+    params.append("sort", sortOrder);
+    params.append("page", page);
+
+    try {
 
       const res = await fetch(`/api/public/search?${params.toString()}`);
       const data = await res.json();
 
-      setPosts(isNewSearch ? (data.posts || []) : prev => [...prev, ...(data.posts || [])]);
-
+      setPosts(prev => [...prev, ...(data.posts || [])]);
       setHasMore(data.hasMore);
-      setPage(pageToFetch + 1); //sl br stranice za sl put
+      setPage(prevPage => prevPage + 1);
     } catch (error) {
-      console.error("Greška prilikom dohvatanja postova:", error);
+      console.error("Greška prilikom dohvatanja dodatnih postova:", error);
     }
-  }, [searchQuery, minLikes, maxLikes, minDate, maxDate, JSON.stringify(tags)]);
+  };
 
   const fetchUsers = useCallback(async () => {
     if (!searchQuery) {
@@ -83,22 +119,12 @@ const HomePage = () => {
   }, [searchQuery]);
 
   useEffect(() => {
-    if (searchQuery) {
-      if (searchType === 'users') {
-        setPosts([]);
-        setHasMore(false);
-        fetchUsers();
-      } else {
-        setUsers([]);
-        setPage(1);
-        fetchPosts(1, true);
-      }
-    } else {
+    if (searchQuery && searchType === 'users') {
+      fetchUsers();
+    } else if (!searchQuery) {
       setUsers([]);
-      setPage(1);
-      fetchPosts(1, true);
     }
-  }, [searchQuery, searchType, fetchPosts, fetchUsers]);
+  }, [searchQuery, searchType, fetchUsers]);
 
   const renderContent = () => {
     if (searchQuery) {
@@ -108,7 +134,7 @@ const HomePage = () => {
       return (
         <InfiniteScroll
           dataLength={posts.length}
-          next={() => fetchPosts(page)}
+          next={fetchMorePosts}
           hasMore={hasMore}
           loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
           endMessage={
@@ -128,7 +154,7 @@ const HomePage = () => {
         <InfiniteScroll
           className="border-t-2 border-gray-400"
           dataLength={posts.length}
-          next={() => fetchPosts(page)}
+          next={fetchMorePosts} 
           hasMore={hasMore}
           loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
           endMessage={

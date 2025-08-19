@@ -13,6 +13,7 @@ const SearchBar = ({ onSearch }) => {
     minDate: "",
     maxDate: "",
     tags: "",
+    sortOrder: "desc"
   });
 
   const handleInputChange = (e) => {
@@ -51,6 +52,13 @@ const SearchBar = ({ onSearch }) => {
     }));
   };
 
+  const handleSortToggle = () => {
+    setFilters(prev => ({
+      ...prev,
+      sortOrder: prev.sortOrder === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
   return (
     <div className="relative">
       {showFilters && (
@@ -84,6 +92,18 @@ const SearchBar = ({ onSearch }) => {
                 </button>
               </div>
             </div>
+
+            <div className="flex items-center gap-4 border-t pt-4">
+              <span className="text-sm font-medium">Sortiraj po datumu:</span>
+              <button
+                type="button"
+                onClick={handleSortToggle}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary_accent"
+              >
+                {filters.sortOrder === 'desc' ? 'Najnovije prvo' : 'Najstarije prvo'}
+              </button>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex flex-col">
                 <label htmlFor="minLikes">Minimalan broj lajkova</label>
