@@ -15,7 +15,9 @@ const PostList = ({ posts }) => {
   );
 
   if (!posts || posts.length === 0) {
-    return <p className="text-gray-600">Nema članaka za prikaz.</p>;
+    return (
+      <p className="text-gray-600 text-center py-4">Nema članaka za prikaz.</p>
+    );
   }
 
   const formatViews = (num) => {
@@ -58,51 +60,52 @@ const PostList = ({ posts }) => {
           >
             {post.title}
           </Link>
-          
-          <div className="flex flex-wrap items-center text-sm text-gray-500 mt-2">
-            <Link to={`/profile/${post.author_username}`} className="flex items-center mr-3 hover:opacity-80 transition-opacity">
-                <img 
-                    src={post.author_profile_picture_url || '/logo.png'}
-                    alt={post.author_username}
-                    className="w-7 h-7 rounded-full mr-2 object-cover"
-                />
-                <span className="font-semibold text-gray-700">
-                    {post.author_username}
-                </span>
-            </Link>
-            
-            <div className="flex items-center text-gray-400">
-                <span className="mx-1">•</span>
-                <span>
-                    {new Date(post.created_at).toLocaleDateString()}
-                </span>
 
-                <span className="mx-1">•</span>
-                <div
-                    className="flex items-center gap-1"
-                    title={`${post.view_count || 0} pregleda`}
+          <div className="flex flex-wrap items-center text-sm text-gray-500 mt-2">
+            <Link
+              to={`/profile/${post.author_username}`}
+              className="flex items-center mr-3 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src={post.author_profile_picture_url || "/logo.png"}
+                alt={post.author_username}
+                className="w-7 h-7 rounded-full mr-2 object-cover"
+              />
+              <span className="font-semibold text-gray-700">
+                {post.author_username}
+              </span>
+            </Link>
+
+            <div className="flex items-center text-gray-400">
+              <span className="mx-1">•</span>
+              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+
+              <span className="mx-1">•</span>
+              <div
+                className="flex items-center gap-1"
+                title={`${post.view_count || 0} pregleda`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
                 >
-                    <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                    </svg>
-                    <span>{formatViews(post.view_count || 0)}</span>
-                </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+                <span>{formatViews(post.view_count || 0)}</span>
+              </div>
             </div>
           </div>
 
@@ -110,7 +113,7 @@ const PostList = ({ posts }) => {
           {post.tags && post.tags.trim() !== "" && (
             <div className="mt-3 flex flex-wrap gap-2 items-center">
               <span className="text-sm text-gray-600">Tagovi:</span>
-              Tagovi: 
+              Tagovi:
               {post.tags.split(", ").map((tag, index) => (
                 <button
                   key={index}
