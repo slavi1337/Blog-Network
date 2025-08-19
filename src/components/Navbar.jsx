@@ -29,6 +29,10 @@ const Navbar = () => {
       navigate(`/?${params.toString()}`);
     } else {
       params.set("type", "posts");
+
+      if (filters.category) {
+        params.set("category", filters.category);
+      }
       
       if (filters.minLikes !== "") params.set("minLikes", filters.minLikes);
       if (filters.maxLikes !== "") params.set("maxLikes", filters.maxLikes);

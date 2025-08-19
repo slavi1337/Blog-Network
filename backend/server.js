@@ -142,7 +142,7 @@ app.get("/api/public/search", async (req, res) => {
   const limit = 8;
   const offset = (page - 1) * limit;
 
-  const { search, minLikes, maxLikes, minDate, maxDate, tags, sortBy, sortOrder } = req.query;
+  const { search, category, minLikes, maxLikes, minDate, maxDate, tags, sortBy, sortOrder } = req.query;
 
   let params = [];
   const whereClauses = ["p.status = 'published'"];
@@ -153,6 +153,12 @@ app.get("/api/public/search", async (req, res) => {
       `(p.title ILIKE '%' || $${paramIndex} || '%' OR p.content ILIKE '%' || $${paramIndex} || '%')`
     );
     params.push(search);
+    paramIndex++;
+  }
+
+  if (category) {
+    whereClauses.push(`p.category_id = $${paramIndex}`);
+    params.push(parseInt(category));
     paramIndex++;
   }
 

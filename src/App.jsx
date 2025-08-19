@@ -43,6 +43,7 @@ const HomePage = () => {
   const tags = searchParams.getAll("tags");
   const sortBy = searchParams.get("sortBy") || "createdAt";
   const sortOrder = searchParams.get("sortOrder") || "desc";
+  const category = searchParams.get("category") || "";
   
   const stringifiedTags = JSON.stringify(tags);
 
@@ -51,6 +52,7 @@ const HomePage = () => {
       const params = new URLSearchParams();
 
       if (searchQuery) params.append("search", searchQuery);
+      if (category) params.append("category", category);
       if (minLikes) params.append("minLikes", minLikes);
       if (maxLikes) params.append("maxLikes", maxLikes);
       if (minDate) params.append("minDate", minDate);
@@ -79,11 +81,12 @@ const HomePage = () => {
     } else {
       performSearch();
     }
-  }, [searchQuery, searchType, minLikes, maxLikes, minDate, maxDate, stringifiedTags, sortBy, sortOrder]);
+  }, [searchQuery, searchType, minLikes, maxLikes, minDate, maxDate, stringifiedTags, sortBy, sortOrder, category]); 
 
 const fetchMorePosts = async () => {
     const params = new URLSearchParams();
     if (searchQuery) params.append("search", searchQuery);
+    if (category) params.append("category", category);
     if (minLikes) params.append("minLikes", minLikes);
     if (maxLikes) params.append("maxLikes", maxLikes);
     if (minDate) params.append("minDate", minDate);

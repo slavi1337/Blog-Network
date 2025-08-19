@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const SearchBar = ({ onSearch }) => {
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [filters, setFilters] = useState({
     korisnici: false,
     objave: true,
+    category: "",
     minLikes: "",
     maxLikes: "",
     minDateActive: false,
@@ -16,6 +18,24 @@ const SearchBar = ({ onSearch }) => {
     sortBy: "createdAt",
     sortOrder: "desc"
   });
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data);
+        } else {
+          console.error("Neuspješno dohvatanje kategorija");
+        }
+      } catch (error) {
+        console.error("Greška pri dohvatanju kategorija:", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleInputChange = (e) => {
     setQuery(e.target.value);
@@ -90,6 +110,26 @@ const SearchBar = ({ onSearch }) => {
     viewCount: "translate-x-[200%]"
   };
 
+const handleCategoryChange = (e) => {
+    const { value } = e.target;
+
+    const updatedFilters = {
+      ...filters,
+      category: value
+    };
+
+    setFilters(updatedFilters);
+    
+    const processedFilters = {
+        ...updatedFilters,
+        tags: updatedFilters.tags
+            .split(' ')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0)
+    };
+    onSearch(query, processedFilters);
+  };
+
   const handleSortToggle = () => {
     const newSortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc';
 
@@ -115,7 +155,7 @@ const SearchBar = ({ onSearch }) => {
       {showFilters && (
         <div className="absolute top-16 left-0 w-128 h-auto bg-white border border-gray-300 shadow-lg z-50 p-4">
           <div className="flex flex-col gap-4 text-gray-700">
-<div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
               <span className="text-sm font-medium">Prikaži:</span>
               <div className="relative inline-flex items-center w-44 h-10 rounded-full p-1 bg-gray-200">
                 <div
@@ -142,6 +182,24 @@ const SearchBar = ({ onSearch }) => {
                   Objave
                 </button>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+              <label htmlFor="category" className="text-sm font-medium">Kategorija:</label>
+              <select
+                name="category"
+                id="category"
+                value={filters.category}
+                onChange={handleCategoryChange} 
+                className="px-2 py-1 border border-gray-300 rounded-md bg-white text-gray-700"
+              >
+                <option value="">Sve kategorije</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
