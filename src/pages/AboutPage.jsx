@@ -38,6 +38,25 @@ const AboutPage = () => { return (
       <p className="mt-6">
         Hvala vam što ste dio naše zajednice. Srećno pisanje!
       </p>
+      <div className="flex justify-center">
+        <div className="flex items-center gap-x-16">
+          <img
+            src={"logo.png"}
+            alt="Logo kompanije"
+            className="w-20 h-20 object-contain"
+          />
+          <img
+            src={"etfbl.jpg"}
+            alt="Logo ETFBL"
+            className="w-20 h-20 rounded-full object-cover"
+          />
+          <img
+            src={"unibl.jpg"}
+            alt="Logo UNIBL"
+            className="w-20 h-20 rounded-full object-cover"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </div>
