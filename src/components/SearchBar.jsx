@@ -53,10 +53,23 @@ const SearchBar = ({ onSearch }) => {
   };
 
   const handleSortToggle = () => {
-    setFilters(prev => ({
-      ...prev,
-      sortOrder: prev.sortOrder === 'desc' ? 'asc' : 'desc'
-    }));
+    const newSortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc';
+
+    const updatedFilters = {
+      ...filters,
+      sortOrder: newSortOrder
+    };
+    
+    setFilters(updatedFilters);
+
+    const processedFilters = {
+        ...updatedFilters,
+        tags: updatedFilters.tags
+            .split(' ')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0)
+    };
+    onSearch(query, processedFilters);
   };
 
   return (
