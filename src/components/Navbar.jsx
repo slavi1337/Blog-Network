@@ -36,15 +36,15 @@ const Navbar = () => {
       if (filters.maxDateActive && filters.maxDate) params.set("maxDate", filters.maxDate);
 
       if (filters.tags && Array.isArray(filters.tags)) {
-        filters.tags.forEach((tag) => {
-          if (tag.trim() !== "") {
-            params.append("tags", tag.trim());
-          }
-        });
+        filters.tags.forEach(tag => tag.trim() && params.append("tags", tag.trim()));
+      }
+
+      if (filters.sortBy) {
+        params.set("sortBy", filters.sortBy);
       }
 
       if (filters.sortOrder) {
-        params.set("sort", filters.sortOrder);
+        params.set("sortOrder", filters.sortOrder);
       }
       
       navigate(`/?${params.toString()}`);

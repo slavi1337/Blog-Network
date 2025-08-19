@@ -13,6 +13,7 @@ const SearchBar = ({ onSearch }) => {
     minDate: "",
     maxDate: "",
     tags: "",
+    sortBy: "createdAt",
     sortOrder: "desc"
   });
 
@@ -45,11 +46,48 @@ const SearchBar = ({ onSearch }) => {
   };
 
   const handleToggle = (mode) => {
-    setFilters((prev) => ({
+    const updatedFilters = {
+      ...filters,
       ...prev,
       korisnici: mode === "korisnici",
       objave: mode === "objave"
-    }));
+    };
+    
+    setFilters(updatedFilters);
+
+    const processedFilters = {
+      ...updatedFilters,
+      tags: updatedFilters.tags.split(' ').map(tag => tag.trim()).filter(Boolean)
+    };
+    onSearch(query, processedFilters);
+  };
+
+  const handleSortChange = (newSortBy) => {
+    let newSortOrder = 'desc';
+
+    if (filters.sortBy === newSortBy) {
+      newSortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc';
+    }
+
+    const updatedFilters = {
+      ...filters,
+      sortBy: newSortBy,
+      sortOrder: newSortOrder
+    };
+
+    setFilters(updatedFilters);
+
+    const processedFilters = {
+      ...updatedFilters,
+      tags: updatedFilters.tags.split(' ').map(tag => tag.trim()).filter(Boolean)
+    };
+    onSearch(query, processedFilters);
+  };
+
+  const sortPositions = {
+    createdAt: "translate-x-0",
+    voteScore: "translate-x-full",
+    viewCount: "translate-x-[200%]"
   };
 
   const handleSortToggle = () => {
@@ -79,7 +117,7 @@ const SearchBar = ({ onSearch }) => {
           <div className="flex flex-col gap-4 text-gray-700">
 <div className="flex items-center gap-4">
               <span className="text-sm font-medium">Prikaži:</span>
-              <div className="relative inline-flex items-center w-44 h-10 rounded-full p-1">
+              <div className="relative inline-flex items-center w-44 h-10 rounded-full p-1 bg-gray-200">
                 <div
                   className={`absolute top-1 left-1 w-1/2 h-8 bg-primary rounded-full shadow transition-transform duration-200 ${
                     filters.objave ? "translate-x-full" : "translate-x-0"
@@ -88,7 +126,7 @@ const SearchBar = ({ onSearch }) => {
                 <button
                   type="button"
                   onClick={() => handleToggle("korisnici")}
-                  className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium ${
+                  className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium transition-colors ${
                     filters.korisnici ? "text-white" : "text-gray-600"
                   }`}
                 >
@@ -97,7 +135,7 @@ const SearchBar = ({ onSearch }) => {
                 <button
                   type="button"
                   onClick={() => handleToggle("objave")}
-                  className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium ${
+                  className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium transition-colors ${
                     filters.objave ? "text-white" : "text-gray-600"
                   }`}
                 >
@@ -106,20 +144,47 @@ const SearchBar = ({ onSearch }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 border-t pt-4">
-              <span className="text-sm font-medium">Sortiraj po datumu:</span>
-              <button
-                type="button"
-                onClick={handleSortToggle}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary_accent"
-              >
-                {filters.sortOrder === 'desc' ? 'Najnovije prvo' : 'Najstarije prvo'}
-              </button>
+            <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+              <span className="text-sm font-medium">Sortiraj po:</span>
+              <div className="relative grid grid-cols-3 w-full h-10 rounded-full p-1 bg-gray-200">
+                <div
+                  className={`absolute top-1 left-1 w-1/3 h-8 bg-primary rounded-full shadow transition-transform duration-300 ease-in-out ${
+                    sortPositions[filters.sortBy]
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSortChange("createdAt")}
+                  className="relative z-10 flex items-center justify-center text-sm font-medium transition-colors"
+                >
+                  <span className={filters.sortBy === 'createdAt' ? 'text-white' : 'text-gray-600'}>
+                    {filters.sortBy === 'createdAt' && filters.sortOrder === 'desc' ? 'Najnovije' : 'Najstarije'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSortChange("voteScore")}
+                  className="relative z-10 flex items-center justify-center text-sm font-medium transition-colors"
+                >
+                  <span className={filters.sortBy === 'voteScore' ? 'text-white' : 'text-gray-600'}>
+                    {filters.sortBy === 'voteScore' && filters.sortOrder === 'desc' ? 'Najviše glasova' : 'Najmanje glasova'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSortChange("viewCount")}
+                  className="relative z-10 flex items-center justify-center text-sm font-medium transition-colors"
+                >
+                  <span className={filters.sortBy === 'viewCount' ? 'text-white' : 'text-gray-600'}>
+                    {filters.sortBy === 'viewCount' && filters.sortOrder === 'desc' ? 'Najviše pregleda' : 'Najmanje pregleda'}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 border-t border-gray-200 pt-4">
               <div className="flex flex-col">
-                <label htmlFor="minLikes">Minimalan broj lajkova</label>
+                <label htmlFor="minLikes" className="text-sm">Minimalan broj lajkova</label>
                 <input
                   type="number"
                   name="minLikes"
@@ -130,7 +195,7 @@ const SearchBar = ({ onSearch }) => {
                 />
               </div>
               <div className="flex flex-col">
-                <label htmlFor="maxLikes">Maksimalan broj lajkova</label>
+                <label htmlFor="maxLikes" className="text-sm">Maksimalan broj lajkova</label>
                 <input
                   type="number"
                   name="maxLikes"
@@ -144,7 +209,7 @@ const SearchBar = ({ onSearch }) => {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex flex-col">
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     name="minDateActive"
@@ -165,7 +230,7 @@ const SearchBar = ({ onSearch }) => {
               </div>
 
               <div className="flex flex-col">
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     name="maxDateActive"
@@ -187,7 +252,7 @@ const SearchBar = ({ onSearch }) => {
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="tags">Tagovi (razdvojeni razmakom)</label>
+              <label htmlFor="tags" className="text-sm">Tagovi (razdvojeni razmakom)</label>
               <input
                 type="text"
                 name="tags"

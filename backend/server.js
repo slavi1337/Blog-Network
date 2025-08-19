@@ -142,7 +142,7 @@ app.get("/api/public/search", async (req, res) => {
   const limit = 8;
   const offset = (page - 1) * limit;
 
-  const { search, minLikes, maxLikes, minDate, maxDate, tags, sort } = req.query;
+  const { search, minLikes, maxLikes, minDate, maxDate, tags, sortBy, sortOrder } = req.query;
 
   let params = [];
   const whereClauses = ["p.status = 'published'"];
@@ -199,10 +199,17 @@ app.get("/api/public/search", async (req, res) => {
 
   const whereClause = `WHERE ${whereClauses.join(" AND ")}`;
   
-  let orderByClause = 'ORDER BY p.created_at DESC';
-  if (sort && sort.toLowerCase() === 'asc') {
-    orderByClause = 'ORDER BY p.created_at ASC';
-  }
+  const allowedSortBy = {
+    createdAt: "p.created_at",
+    voteScore: "vote_score",
+    viewCount: "p.view_count"
+  };
+
+  const sortColumn = allowedSortBy[sortBy] || "p.created_at"; 
+
+  const order = sortOrder && sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+  const orderByClause = `ORDER BY ${sortColumn} ${order}`;
 
 
   const postsQuery = `SELECT 

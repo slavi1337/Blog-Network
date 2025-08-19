@@ -41,7 +41,8 @@ const HomePage = () => {
   const minDate = searchParams.get("minDate") || "";
   const maxDate = searchParams.get("maxDate") || "";
   const tags = searchParams.getAll("tags");
-  const sortOrder = searchParams.get("sort") || "desc";
+  const sortBy = searchParams.get("sortBy") || "createdAt";
+  const sortOrder = searchParams.get("sortOrder") || "desc";
   
   const stringifiedTags = JSON.stringify(tags);
 
@@ -56,7 +57,8 @@ const HomePage = () => {
       if (maxDate) params.append("maxDate", maxDate);
       tags.forEach(tag => params.append("tags", tag));
 
-      params.append("sort", sortOrder);
+      params.append("sortBy", sortBy);
+      params.append("sortOrder", sortOrder);
       params.append("page", "1");
 
       try {
@@ -77,7 +79,7 @@ const HomePage = () => {
     } else {
       performSearch();
     }
-  }, [searchQuery, searchType, minLikes, maxLikes, minDate, maxDate, stringifiedTags, sortOrder]);
+  }, [searchQuery, searchType, minLikes, maxLikes, minDate, maxDate, stringifiedTags, sortBy, sortOrder]);
 
 const fetchMorePosts = async () => {
     const params = new URLSearchParams();
@@ -87,7 +89,8 @@ const fetchMorePosts = async () => {
     if (minDate) params.append("minDate", minDate);
     if (maxDate) params.append("maxDate", maxDate);
     tags.forEach(tag => params.append("tags", tag));
-    params.append("sort", sortOrder);
+    params.append("sortBy", sortBy);
+    params.append("sortOrder", sortOrder);
     params.append("page", page);
 
     try {
