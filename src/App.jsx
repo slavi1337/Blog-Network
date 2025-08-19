@@ -170,6 +170,21 @@ const fetchMorePosts = async () => {
             </p>
           }
         >
+
+          {minLikes || maxLikes || minDate || maxDate || category || tags!="" ? (
+            <div>
+              <h1 className="font-bold text-xl">Aktivni filteri: </h1>
+              {minLikes && <div>Minimalan broj lajkova: {minLikes}</div>}
+              {maxLikes && <div>Maksimalan broj lajkova: {maxLikes}</div>}
+              {minDate && <div>Najraniji datum objave: {minDate}</div>}
+              {maxDate && <div>Najkasniji datum objave: {maxDate}</div>}
+              {category && <div>Kategorija: {category}</div>}
+              {tags != "" && <div>Tagovi: {tags.join(", ")}</div>}
+            </div>
+          ) : (
+            <div>Nema aktivnih  filtera</div>
+          )}
+
           <PostList posts={posts} />
         </InfiniteScroll>
       </>
