@@ -28,7 +28,7 @@ const UserList = ({ users, emptyMessage = "Nema korisnika za prikaz." }) => {
           </div>
           <Link
             to={`/profile/${user.username}`}
-            className="px-3 py-1 text-sm rounded-full bg-orange-100 text-primary-accent font-semibold hover:bg-orange-200"
+            className="px-3 py-1 text-sm rounded-full bg-orange-100 text-primary font-semibold hover:bg-orange-200"
           >
             Pogledaj profil
           </Link>
