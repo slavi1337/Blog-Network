@@ -184,9 +184,7 @@ const AdminDashboardPage = () => {
 
   const fetchData = useCallback(
     async (tab) => {
-      if (tab !== "admins" && tab !== "censored") {
-        setLoading(true);
-      }
+      setLoading(true);
       setData([]);
       try {
         const response = await fetch(`/api/admin/${tab}`);
@@ -205,7 +203,15 @@ const AdminDashboardPage = () => {
   );
 
   useEffect(() => {
-    fetchData(activeTab);
+    if (
+      activeTab === "issues" ||
+      activeTab === "users" ||
+      activeTab === "admins"
+    ) {
+      fetchData(activeTab);
+    } else {
+      setLoading(false);
+    }
   }, [activeTab, fetchData]);
 
   const handleLogout = async () => {
@@ -488,7 +494,7 @@ const AdminDashboardPage = () => {
       </div>
 
       <div className="bg-primary p-6 rounded-lg shadow-md">
-        {loading && activeTab !== "censored" && activeTab !== "admins" ? (
+        {loading ? (
           <p className="text-textcolor">Učitavanje...</p>
         ) : (
           <div className="overflow-x-auto">
