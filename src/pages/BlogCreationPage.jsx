@@ -556,7 +556,7 @@ const BlogCreationPage = () => {
               </div>
             )}
 
-            <div className="bg-white border border-gray-300 rounded-md">
+            <div className="bg-white border-none rounded-md pb-16 md:pb-8">
               <ReactQuill
                 ref={quillRef}
                 theme="snow"
