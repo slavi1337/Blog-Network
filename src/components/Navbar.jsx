@@ -33,14 +33,18 @@ const Navbar = () => {
       if (filters.category) {
         params.set("category", filters.category);
       }
-      
+
       if (filters.minLikes !== "") params.set("minLikes", filters.minLikes);
       if (filters.maxLikes !== "") params.set("maxLikes", filters.maxLikes);
-      if (filters.minDateActive && filters.minDate) params.set("minDate", filters.minDate);
-      if (filters.maxDateActive && filters.maxDate) params.set("maxDate", filters.maxDate);
+      if (filters.minDateActive && filters.minDate)
+        params.set("minDate", filters.minDate);
+      if (filters.maxDateActive && filters.maxDate)
+        params.set("maxDate", filters.maxDate);
 
       if (filters.tags && Array.isArray(filters.tags)) {
-        filters.tags.forEach(tag => tag.trim() && params.append("tags", tag.trim()));
+        filters.tags.forEach(
+          (tag) => tag.trim() && params.append("tags", tag.trim())
+        );
       }
 
       if (filters.sortBy) {
@@ -50,7 +54,7 @@ const Navbar = () => {
       if (filters.sortOrder) {
         params.set("sortOrder", filters.sortOrder);
       }
-      
+
       navigate(`/?${params.toString()}`);
     }
   };
@@ -147,7 +151,7 @@ const Navbar = () => {
         </SignedIn>
         <SignedOut>
           <Link to="/sign-in">
-            <button className="py-2 px-4 rounded-3xl bg-primary hover:bg-primary-accent text-white transition-all duration-300">
+            <button className="py-2 px-4 rounded-3xl bg-primary hover:bg-primary-accent text-textcolor transition-all duration-300">
               Login
             </button>
           </Link>
