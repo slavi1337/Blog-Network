@@ -172,7 +172,7 @@ const SinglePostPage = () => {
           const isAuthor = user?.username === post.author_username;
           const isGlobalMod = statusData.viewer_role === "moderator";
           const isPersonalMod = statusData.viewer_is_personal_moderator;
-          setCanManageContent(isAuthor);
+          setCanManageContent(isAuthor || isGlobalMod || isPersonalMod);
           setCanDeletePost(isAuthor || isGlobalMod);
         } catch (err) {
           console.error("Nije moguće dohvatiti status korisnika:", err);
@@ -433,7 +433,6 @@ const SinglePostPage = () => {
               </svg>
               <span>{formatViews(post.view_count)}</span>
             </div>
-
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -548,7 +547,9 @@ const SinglePostPage = () => {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4"> Tagovi:
+      <div className="flex flex-wrap gap-2 mb-4">
+        {" "}
+        Tagovi:
         {post.tags &&
           post.tags
             .split(" ")
