@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
-import PostList from "../components/PostList";
 
 const BellOnIcon = () => (
   <svg
@@ -32,11 +31,11 @@ const BellOffIcon = () => (
   >
     <path
       d="m17.972 12.751-.42-3.782a5.586 5.586 0 0 0-3.24-4.469l-.3-.164a1.5 1.5 0 0 1-.75-1.021l-.142-.712A.75.75 0 0 0 12.385 2h-.77a.75.75 0 0 0-.736.603l-.142.712a1.5 1.5 0 0 1-.75 1.02l-.3.165a5.582 5.582 0 0 0-.616.329l1.478 1.477a3.586 3.586 0 0 1 5.015 2.884l.266 2.398 1.912 1.912a.241.241 0 0 0 .241.06.08.08 0 0 0 .056-.085l-.067-.724z"
-      fill="#000000"
+      fill="currentColor"
     />
     <path
       d="M3.293 4.707 6.63 8.044a5.61 5.61 0 0 0-.182.925l-.54 4.865a3.375 3.375 0 0 1-1.283 2.291l-.354.275a1.5 1.5 0 0 0-.534 1.548L3.75 18c.147.588.675 1 1.28 1H9a3 3 0 1 0 6 0h2.586l1.707 1.707a1 1 0 0 0 1.414-1.414l-16-16a1 1 0 0 0-1.414 1.414zM6.1 17h9.486L8.369 9.784l-.474 4.27C7.773 15.154 7.499 16.15 6.1 17z"
-      fill="#000000"
+      fill="currentColor"
     />
   </svg>
 );
@@ -51,47 +50,70 @@ const ProfilePage = () => {
   const [error, setError] = useState(null);
   const location = useLocation();
 
+  const [viewerHasBlocked, setViewerHasBlocked] = useState(false);
+  const [profileOwnerHasBlocked, setProfileOwnerHasBlocked] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
-
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   useEffect(() => {
-    if (isLoaded) {
-      const fetchProfileData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const token = isSignedIn ? await getToken() : null;
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-          const response = await fetch(`/api/profiles/${profileUsername}`, {
-            headers,
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              errorData.error || "Greška pri dohvatanju podataka."
-            );
-          }
-
-          const data = await response.json();
-          console.log("Podaci stigli u ProfilePage:", data);
-          console.log("Prvi post u listi:", data.posts[0]);
-          setProfileData(data);
-          setIsFollowing(data.is_followed_by_viewer);
-          setIsBlocked(data.is_blocked_by_viewer);
-          setNotificationsEnabled(data.notifications_enabled_for_viewer);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchProfileData();
+    if (!isLoaded) {
+      return;
     }
+
+    const fetchAllProfileData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const publicResponse = await fetch(
+          `/api/public/profiles/${profileUsername}`
+        );
+        if (!publicResponse.ok) {
+          const errorData = await publicResponse.json();
+          throw new Error(errorData.error || "Greška pri dohvatanju profila.");
+        }
+        const publicData = await publicResponse.json();
+        setProfileData(publicData);
+
+        if (isSignedIn) {
+          let token;
+          try {
+            token = await getToken();
+          } catch (e) {}
+
+          if (token) {
+            const statusResponse = await fetch(
+              `/api/profiles/${profileUsername}/status`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              setIsFollowing(statusData.is_followed_by_viewer);
+              setNotificationsEnabled(
+                statusData.notifications_enabled_for_viewer
+              );
+              setViewerHasBlocked(statusData.viewer_has_blocked);
+              setProfileOwnerHasBlocked(
+                statusData.has_been_blocked_by_profile_owner
+              );
+            }
+          }
+        } else {
+          setIsFollowing(false);
+          setNotificationsEnabled(false);
+          setViewerHasBlocked(false);
+          setProfileOwnerHasBlocked(false);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllProfileData();
   }, [profileUsername, isLoaded, isSignedIn, getToken]);
 
   useEffect(() => {
@@ -103,6 +125,10 @@ const ProfilePage = () => {
   const handleFollowToggle = async () => {
     if (!isSignedIn || !profileData) return;
     const newFollowState = !isFollowing;
+
+    if (newFollowState === true) {
+      setNotificationsEnabled(true);
+    }
 
     setProfileData((prev) => ({
       ...prev,
@@ -123,6 +149,9 @@ const ProfilePage = () => {
           followers_count:
             Number(prev.followers_count) + (!newFollowState ? 1 : -1),
         }));
+        if (newFollowState === true) {
+          setNotificationsEnabled(false);
+        }
       }
     } catch (err) {
       setIsFollowing(!newFollowState);
@@ -131,12 +160,15 @@ const ProfilePage = () => {
         followers_count:
           Number(prev.followers_count) + (!newFollowState ? 1 : -1),
       }));
+      if (newFollowState === true) {
+        setNotificationsEnabled(false);
+      }
     }
   };
 
   const handleBlockToggle = async () => {
     if (!isSignedIn || !profileData) return;
-    const newBlockState = !isBlocked;
+    const newBlockState = !viewerHasBlocked;
 
     if (
       newBlockState &&
@@ -153,7 +185,7 @@ const ProfilePage = () => {
       }));
       setIsFollowing(false);
     }
-    setIsBlocked(newBlockState);
+    setViewerHasBlocked(newBlockState);
 
     try {
       const token = await getToken();
@@ -162,10 +194,10 @@ const ProfilePage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
-        setIsBlocked(!newBlockState);
+        setViewerHasBlocked(!newBlockState);
       }
     } catch (err) {
-      setIsBlocked(!newBlockState);
+      setViewerHasBlocked(!newBlockState);
     }
   };
 
@@ -227,9 +259,13 @@ const ProfilePage = () => {
   if (!profileData)
     return <div className="text-center p-10">Nema podataka o profilu.</div>;
 
+
   profileData.posts.forEach(post => {
     post.author_profile_picture_url = profileData.profile_picture_url;
   });
+
+  const isBlockedRelation = viewerHasBlocked || profileOwnerHasBlocked;
+
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
@@ -260,7 +296,7 @@ const ProfilePage = () => {
 
           {isSignedIn && !isOwnProfile && (
             <div className="mt-4 flex justify-center md:justify-start items-center gap-3">
-              {!isBlocked && (
+              {!isBlockedRelation && (
                 <button
                   onClick={handleFollowToggle}
                   className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
@@ -272,7 +308,7 @@ const ProfilePage = () => {
                   {isFollowing ? "Otprati" : "Zaprati"}
                 </button>
               )}
-              {isFollowing && !isBlocked && (
+              {isFollowing && !isBlockedRelation && (
                 <button
                   onClick={handleNotificationToggle}
                   title={
@@ -285,12 +321,14 @@ const ProfilePage = () => {
                   {notificationsEnabled ? <BellOnIcon /> : <BellOffIcon />}
                 </button>
               )}
-              <button
-                onClick={handleBlockToggle}
-                className="px-4 py-2 rounded-lg font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-              >
-                {isBlocked ? "Odblokiraj" : "Blokiraj"}
-              </button>
+              {!profileOwnerHasBlocked && (
+                <button
+                  onClick={handleBlockToggle}
+                  className="px-4 py-2 rounded-lg font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                >
+                  {viewerHasBlocked ? "Odblokiraj" : "Blokiraj"}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -334,9 +372,11 @@ const ProfilePage = () => {
         </aside>
 
         <main className="w-full md:w-3/4">
-          {isBlocked ? (
+          {isBlockedRelation ? (
             <div className="p-6 bg-gray-100 rounded-lg text-center text-gray-600">
-              Blokirali ste ovog korisnika. Ne možete videti njegove objave.
+              {viewerHasBlocked
+                ? "Blokirali ste ovog korisnika. Ne možete vidjeti njegov sadržaj."
+                : "Ovaj korisnik vas je blokirao. Ne možete vidjeti njegov sadržaj."}
             </div>
           ) : (
             <Outlet

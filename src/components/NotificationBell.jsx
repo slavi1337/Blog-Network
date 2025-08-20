@@ -35,25 +35,41 @@ const NotificationBell = () => {
 
   const fetchNotifications = useCallback(async () => {
     if (!isSignedIn || !isLoaded) return;
+
+    let token;
     try {
-      const token = await getToken();
-      if (!token) return;
+      token = await getToken();
+      if (!token) {
+        console.log(
+          "Token još uvijek nije dostupan, preskačem dohvatanje notifikacija."
+        );
+        return;
+      }
+    } catch (error) {
+      console.error("Greška pri dobijanju tokena:", error);
+      return;
+    }
+
+    try {
       const res = await fetch("/api/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) return;
       if (!res.ok) return;
       const data = await res.json();
       setNotifications(data);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     }
-  }, [getToken, isSignedIn, isLoaded]);
+  }, [isSignedIn, isLoaded]);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+    if (isLoaded && isSignedIn) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoaded, isSignedIn, fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
