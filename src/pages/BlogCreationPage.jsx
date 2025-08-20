@@ -5,6 +5,7 @@ import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { IKContext, IKUpload } from "imagekitio-react";
+import "react-quill-new/dist/quill.snow.css";
 
 const MicrophoneIcon = ({ isListening }) => (
   <svg
@@ -49,6 +50,12 @@ const BlogCreationPage = () => {
 
   const [uploadedFiles, setUploadedFiles] = useState(new Map());
 
+  const uploadedFilesRef = useRef(uploadedFiles);
+
+  useEffect(() => {
+    uploadedFilesRef.current = uploadedFiles;
+  }, [uploadedFiles]);
+
   const uploadHandler = (mediaType) => {
     const input = document.createElement("input");
     input.setAttribute("type", "file");
@@ -59,13 +66,12 @@ const BlogCreationPage = () => {
       const file = input.files[0];
       if (!file || !quillRef.current) return;
 
-      const currentTotalSize = Array.from(uploadedFiles.values()).reduce(
-        (sum, size) => sum + size,
-        0
-      );
+      const currentTotalSize = Array.from(
+        uploadedFilesRef.current.values()
+      ).reduce((sum, size) => sum + size, 0);
       if (currentTotalSize + file.size > MAX_UPLOAD_SIZE_BYTES) {
         setError(
-          `Upload nije uspeo. Ukupna veličina svih fajlova u postu ne smije preći ${MAX_UPLOAD_SIZE_MB} MB.`
+          `Upload nije uspio. Ukupna veličina svih fajlova u postu ne smije preći ${MAX_UPLOAD_SIZE_MB} MB.`
         );
         return;
       }
@@ -102,13 +108,10 @@ const BlogCreationPage = () => {
           throw new Error(
             uploadResult.message || `Upload ${mediaType} nije uspio.`
           );
-
         setUploadedFiles((prev) =>
           new Map(prev).set(uploadResult.url, uploadResult.size)
         );
-
         quill.insertEmbed(range.index, mediaType, uploadResult.url);
-        quill.setSelection(range.index + 1);
       } catch (uploadError) {
         setError(`Greška pri uploadu: ${uploadError.message}`);
       } finally {
@@ -217,6 +220,46 @@ const BlogCreationPage = () => {
     };
   };
 
+  const handleContentChange = (newContent, delta, source, editor) => {
+    setContent(newContent);
+
+    if (source === "user") {
+      const deleteOps = delta.ops.filter((op) => op.delete);
+
+      if (deleteOps.length > 0) {
+        const previousContents = editor.getContents(
+          0,
+          editor.getLength() - delta.length()
+        );
+
+        let checkIndex = 0;
+        delta.ops.forEach((op) => {
+          if (op.retain) {
+            checkIndex += op.retain;
+          } else if (op.delete) {
+            const deletedItem = previousContents.slice(
+              checkIndex,
+              checkIndex + op.delete
+            );
+            deletedItem.ops.forEach((deletedOp) => {
+              if (deletedOp.insert && typeof deletedOp.insert === "object") {
+                const deletedUrl =
+                  deletedOp.insert.image || deletedOp.insert.video;
+                if (deletedUrl) {
+                  setUploadedFiles((prev) => {
+                    const newFiles = new Map(prev);
+                    newFiles.delete(deletedUrl);
+                    return newFiles;
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    }
+  };
+
   const {
     isListening,
     transcript,
@@ -250,14 +293,13 @@ const BlogCreationPage = () => {
           if (!response.ok) {
             const errData = await response.json();
             throw new Error(
-              errData.error || "Nije moguće učitati podatke za izmenu."
+              errData.error || "Nije moguće učitati podatke za izmjenu."
             );
           }
 
           const data = await response.json();
 
           setTitle(data.title);
-          setContent(data.content);
           setCategoryId(data.category_id);
           setTags(data.tags || "");
           setPostId(data.id);
@@ -298,6 +340,7 @@ const BlogCreationPage = () => {
             const minutes = utcDate.getMinutes().toString().padStart(2, "0");
             setPublishAt(`${year}-${month}-${day}T${hours}:${minutes}`);
           }
+          setContent(data.content || "");
         } catch (err) {
           setError(err.message);
         }
@@ -325,22 +368,6 @@ const BlogCreationPage = () => {
     };
     fetchCategories();
   }, [isEditMode]);
-
-  useEffect(() => {
-    const currentURLs = new Set(
-      (content.match(/src="([^"]+)"/g) || []).map((src) => src.slice(5, -1))
-    );
-
-    setUploadedFiles((prev) => {
-      const newFiles = new Map();
-      for (const [url, size] of prev.entries()) {
-        if (currentURLs.has(url)) {
-          newFiles.set(url, size);
-        }
-      }
-      return newFiles;
-    });
-  }, [content]);
 
   const modules = useMemo(
     () => ({
@@ -561,7 +588,7 @@ const BlogCreationPage = () => {
                 ref={quillRef}
                 theme="snow"
                 value={content}
-                onChange={setContent}
+                onChange={handleContentChange}
                 modules={modules}
                 className="h-72"
               />
