@@ -7,16 +7,24 @@ const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
   const { isSignedIn } = useAuth();
 
   return (
-    <div className="flex items-start space-x-3 py-3">
-      <img
-        src={comment.profile_picture_url || "/vite.svg"}
-        alt={comment.username}
-        className="w-10 h-10 rounded-full object-cover"
-      />
-      <div className="flex-1">
-        <div className="bg-gray-100 rounded-lg p-3">
-          <p className="font-semibold text-sm">{comment.username}</p>
-          <p className="text-gray-800">{comment.content}</p>
+    <div className="flex items-start space-x-3 py-3 w-full">
+      <div className="flex-1 w-full">
+        <div className="bg-gray-100 rounded-lg p-3 w-full">
+          <div className="flex items-start gap-x-3">
+            <img
+              src={comment.profile_picture_url || "/vite.svg"}
+              alt={comment.username}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+            <div className="flex-1">
+              <p className="font-semibold text-sm whitespace-normal break-words">
+                {comment.username}
+              </p>
+              <p className="text-gray-800 whitespace-normal break-words mt-1">
+                {comment.content}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="text-xs text-gray-500 mt-1 flex items-center space-x-3">
           <span>{new Date(comment.created_at).toLocaleString()}</span>
@@ -36,6 +44,8 @@ const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
               Obriši
             </button>
           )}
+          <label className="font-bold text-l">ID: {comment.id}</label>
+          <label>Reply to: {comment.parent_comment_id}</label>
         </div>
 
         {/* Forma za odgovor, prikazuje se na klik */}
@@ -53,18 +63,18 @@ const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
           </div>
         )}
 
-        <div className="pl-5 border-l-2 border-gray-200 mt-3">
-          {comment.children &&
-            comment.children.map((childComment) => (
-              <Comment
-                key={childComment.id}
-                comment={childComment}
-                onCommentAdded={onCommentAdded}
-                canManage={canManage}
-                onDeleteComment={onDeleteComment}
-              />
-            ))}
-        </div>
+          <div className="pl-0 md:pl-12 md:border-l-2 border-gray-200 mt-3">
+            {comment.children &&
+              comment.children.map((childComment) => (
+                <Comment
+                  key={childComment.id}
+                  comment={childComment}
+                  onCommentAdded={onCommentAdded}
+                  canManage={canManage}
+                  onDeleteComment={onDeleteComment}
+                />
+              ))}
+          </div>
       </div>
     </div>
   );

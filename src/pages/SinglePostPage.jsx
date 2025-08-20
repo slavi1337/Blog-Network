@@ -385,7 +385,7 @@ const SinglePostPage = () => {
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10 bg-white shadow-lg rounded-lg m-4 md:m-8">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col md:flex-row justify-between items-start">
         <div className="flex-1">
           <h1 className="text-4xl font-extrabold mb-2 text-gray-900">
             {translatedTitle || post.title}
@@ -435,7 +435,7 @@ const SinglePostPage = () => {
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 pb-8">
           <button
             onClick={handleShare}
             className="p-2 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"

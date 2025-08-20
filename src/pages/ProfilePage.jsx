@@ -259,7 +259,13 @@ const ProfilePage = () => {
   if (!profileData)
     return <div className="text-center p-10">Nema podataka o profilu.</div>;
 
+
+  profileData.posts.forEach(post => {
+    post.author_profile_picture_url = profileData.profile_picture_url;
+  });
+
   const isBlockedRelation = viewerHasBlocked || profileOwnerHasBlocked;
+
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">
