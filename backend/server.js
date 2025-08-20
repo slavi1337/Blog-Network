@@ -76,6 +76,42 @@ app.use("/api/profile", userRouterInstance); // Gađa rute kao /api/profile/draf
 app.use("/api/profiles", userRouterInstance); // Gađa rute kao /api/profiles/blognetworkljubitelj9000
 app.use("/api/users", userRouterInstance);
 
+//za neprijavljenog korisnika dohvatanje profila
+app.get("/api/public/profiles/:username", async (req, res) => {
+  const { username } = req.params;
+  try {
+    const profileQuery = `
+            SELECT
+                u.id, u.username, u.first_name, u.last_name, u.profile_picture_url, u.created_at,
+                (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id AND p.status = 'published') AS post_count,
+                (SELECT COUNT(*) FROM followers f WHERE f.follower_id = u.id) AS following_count,
+                (SELECT COUNT(*) FROM followers f WHERE f.followed_id = u.id) AS followers_count
+            FROM users u
+            WHERE u.username = $1;
+        `;
+    const profileResult = await pool.query(profileQuery, [username]);
+    if (profileResult.rowCount === 0)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+    const profileData = profileResult.rows[0];
+    const userId = profileData.id;
+
+    const postsQuery = `
+            SELECT p.id, p.title, p.slug, p.created_at, u.username as author_username, p.is_pinned, p.view_count
+            FROM posts p
+            JOIN users u ON p.author_id = u.id
+            WHERE p.author_id = $1 AND p.status = 'published'
+            ORDER BY p.is_pinned DESC, p.created_at DESC;
+        `;
+    const postsResult = await pool.query(postsQuery, [userId]);
+
+    res.status(200).json({ ...profileData, posts: postsResult.rows });
+  } catch (error) {
+    console.error("Greška pri dohvatanju javnog profila:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+});
+
 app.get("/api/public/posts/featured", async (req, res) => {
   try {
     const query = `

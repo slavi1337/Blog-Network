@@ -294,6 +294,47 @@ const usersRouter = (pool, getInternalUserId) => {
     }
   });
 
+  // iskljucivanje/ukljucivanje notifikacija
+  router.put(
+    "/:userId/follow/notifications",
+    ClerkExpressWithAuth(),
+    async (req, res) => {
+      const followerClerkId = req.auth.userId;
+      const { userId: followedId } = req.params;
+      const { enabled } = req.body;
+
+      if (typeof enabled !== "boolean") {
+        return res
+          .status(400)
+          .json({ error: 'Polje "enabled" mora biti boolean.' });
+      }
+
+      try {
+        const followerId = await getInternalUserId(followerClerkId);
+        if (!followerId)
+          return res.status(404).json({ error: "Korisnik nije pronađen." });
+
+        const result = await pool.query(
+          "UPDATE followers SET notifications_enabled = $1 WHERE follower_id = $2 AND followed_id = $3",
+          [enabled, followerId, followedId]
+        );
+
+        if (result.rowCount === 0) {
+          return res
+            .status(404)
+            .json({ error: "Veza praćenja nije pronađena." });
+        }
+
+        res
+          .status(200)
+          .json({ message: "Podešavanja notifikacija ažurirana." });
+      } catch (error) {
+        console.error("Greška pri ažuriranju notifikacija:", error);
+        res.status(500).json({ error: "Greška na serveru." });
+      }
+    }
+  );
+
   // POST /api/users/:userId/follow - provjeriti rutu u glavnom!!!
   router.post("/:userId/follow", ClerkExpressWithAuth(), async (req, res) => {
     const followerClerkId = req.auth.userId;
@@ -388,49 +429,44 @@ const usersRouter = (pool, getInternalUserId) => {
     }
   });
 
-  // iskljucivanje/ukljucivanje notifikacija
-  router.put(
-    "/:userId/follow/notifications",
-    ClerkExpressWithAuth(),
-    async (req, res) => {
-      const followerClerkId = req.auth.userId;
-      const { userId: followedId } = req.params;
-      const { enabled } = req.body;
+  //zasticena ruta za pregled profila za loginane
+  router.get("/:username/status", ClerkExpressWithAuth(), async (req, res) => {
+    const { username } = req.params;
+    const viewerClerkId = req.auth.userId;
 
-      if (typeof enabled !== "boolean") {
-        return res
-          .status(400)
-          .json({ error: 'Polje "enabled" mora biti boolean.' });
-      }
+    try {
+      const viewerId = await getInternalUserId(viewerClerkId);
+      if (!viewerId)
+        return res.status(404).json({ error: "Gledalac nije pronađen." });
 
-      try {
-        const followerId = await getInternalUserId(followerClerkId);
-        if (!followerId)
-          return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const profileOwnerResult = await pool.query(
+        "SELECT id FROM users WHERE username = $1",
+        [username]
+      );
+      if (profileOwnerResult.rowCount === 0)
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      const profileOwnerId = profileOwnerResult.rows[0].id;
 
-        const result = await pool.query(
-          "UPDATE followers SET notifications_enabled = $1 WHERE follower_id = $2 AND followed_id = $3",
-          [enabled, followerId, followedId]
-        );
+      const statusQuery = `
+            SELECT
+                EXISTS(SELECT 1 FROM followers WHERE follower_id = $1 AND followed_id = $2) as is_followed_by_viewer,
+                (SELECT f.notifications_enabled FROM followers f WHERE follower_id = $1 AND followed_id = $2) as notifications_enabled_for_viewer,
+                EXISTS(SELECT 1 FROM blocked_users WHERE blocker_id = $1 AND blocked_id = $2) as viewer_has_blocked,
+                EXISTS(SELECT 1 FROM blocked_users WHERE blocker_id = $2 AND blocked_id = $1) as has_been_blocked_by_profile_owner
+        `;
+      const statusResult = await pool.query(statusQuery, [
+        viewerId,
+        profileOwnerId,
+      ]);
 
-        if (result.rowCount === 0) {
-          return res
-            .status(404)
-            .json({ error: "Veza praćenja nije pronađena." });
-        }
-
-        res
-          .status(200)
-          .json({ message: "Podešavanja notifikacija ažurirana." });
-      } catch (error) {
-        console.error("Greška pri ažuriranju notifikacija:", error);
-        res.status(500).json({ error: "Greška na serveru." });
-      }
+      res.status(200).json(statusResult.rows[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru." });
     }
-  );
+  });
 
   // DOHVATANJE JAVNOG PROFILA -> GET /api/profiles/:username - !!!! provjeriti
-  router.get(
+  /*router.get(
     "/:username",
     ClerkExpressWithAuth({ optional: true }),
     async (req, res) => {
@@ -488,7 +524,7 @@ const usersRouter = (pool, getInternalUserId) => {
         res.status(500).json({ error: "Greška na serveru." });
       }
     }
-  );
+  );*/
 
   return router;
 };
