@@ -50,23 +50,24 @@ const postsRouter = (pool, getInternalUserId) => {
     const finalPublishAt =
       finalStatus === "scheduled" && publishAt ? publishAt : null;
 
-    try {
-      const authorId = await getInternalUserId(clerkId);
-      if (!authorId)
-        return res
-          .status(404)
-          .json({ error: "Korisnik nije pronađen u bazi." });
+    const client = await pool.connect();
+    let authorId;
 
-      const postCountResult = await pool.query(
-        `SELECT COUNT(*) FROM posts 
-             WHERE author_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'`,
+    try {
+      await client.query("BEGIN");
+
+      authorId = await getInternalUserId(clerkId);
+      if (!authorId) throw new Error("Korisnik nije pronađen u bazi.");
+
+      const postCountResult = await client.query(
+        `SELECT COUNT(*) FROM posts WHERE author_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'`,
         [authorId]
       );
       const postCountToday = parseInt(postCountResult.rows[0].count, 10);
 
       if (postCountToday >= MAX_POSTS_PER_DAY) {
         return res.status(429).json({
-          error: `Dostigli ste dnevni limit od ${MAX_POSTS_PER_DAY} objava. Pokušajte ponovo sutra.`,
+          error: `Dostigli ste dnevni(24h) limit od ${MAX_POSTS_PER_DAY} objava. Pokušajte ponovo sutra.`,
         });
       }
 
@@ -77,10 +78,10 @@ const postsRouter = (pool, getInternalUserId) => {
       const slug = `${slugBase}-${Date.now()}`;
 
       const query = `
-      INSERT INTO posts (author_id, category_id, title, slug, content, status, publish_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, slug, status;
-    `;
+        INSERT INTO posts (author_id, category_id, title, slug, content, status, publish_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, slug, status;
+      `;
       const values = [
         authorId,
         categoryId,
@@ -90,41 +91,88 @@ const postsRouter = (pool, getInternalUserId) => {
         finalStatus,
         finalPublishAt,
       ];
-      const newPostResult = await pool.query(query, values);
+      const newPostResult = await client.query(query, values);
       const newPost = newPostResult.rows[0];
-      const newPostId = newPost.id;
 
       const listaTagova = (tags || "")
         .split(/\s+/)
         .map((t) => t.replace(/^#/, ""))
         .filter((t) => t.length > 0);
       for (const tagName of listaTagova) {
-        let { rows } = await pool.query("SELECT id FROM tags WHERE name = $1", [
-          tagName,
-        ]);
+        let { rows } = await client.query(
+          "SELECT id FROM tags WHERE name = $1",
+          [tagName]
+        );
         let tagId;
         if (rows.length > 0) {
           tagId = rows[0].id;
         } else {
-          const rezultatInserta = await pool.query(
+          const rezultatInserta = await client.query(
             "INSERT INTO tags (name) VALUES ($1) RETURNING id",
             [tagName]
           );
           tagId = rezultatInserta.rows[0].id;
         }
-        await pool.query(
+        await client.query(
           "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
-          [newPostId, tagId]
+          [newPost.id, tagId]
         );
       }
 
+      await client.query("COMMIT");
+
       res.status(201).json({
-        message: `Post uspješno sačuvan kao ${finalStatus}!`,
+        message: `Post uspešno sačuvan kao ${finalStatus}!`,
         post: newPost,
       });
+
+      if (finalStatus === "published") {
+        console.log(
+          `Post ${newPost.id} je objavljen. Tražim pratioce za autora ${authorId}...`
+        );
+        try {
+          const followersRes = await pool.query(
+            `SELECT follower_id FROM followers WHERE followed_id = $1 AND notifications_enabled = TRUE`,
+            [authorId]
+          );
+
+          console.log(
+            `Pronađeno ${followersRes.rowCount} pratilaca sa uključenim notifikacijama.`
+          );
+
+          if (followersRes.rowCount > 0) {
+            const followerIds = followersRes.rows.map((r) => r.follower_id);
+            console.log("Šaljem notifikacije korisnicima:", followerIds);
+
+            const notificationParams = followerIds.flatMap((id) => [
+              id,
+              "new_post_from_followed",
+              newPost.id,
+            ]);
+            const valuePlaceholders = followerIds
+              .map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`)
+              .join(",");
+            const notificationQuery = `INSERT INTO notifications (recipient_id, type, related_entity_id) VALUES ${valuePlaceholders}`;
+
+            await pool.query(notificationQuery, notificationParams);
+            console.log("Notifikacije uspješno upisane u bazu.");
+          }
+        } catch (notificationError) {
+          console.error(
+            "!!! GREŠKA pri slanju notifikacija za novi post:",
+            notificationError
+          );
+        }
+      }
     } catch (error) {
-      console.error("Greška pri kreiranju posta:", error);
+      await client.query("ROLLBACK");
+      console.error(
+        "Greška pri kreiranju posta (transakcija poništena):",
+        error
+      );
       res.status(500).json({ error: "Greška na serveru." });
+    } finally {
+      client.release();
     }
   });
 
@@ -158,7 +206,8 @@ const postsRouter = (pool, getInternalUserId) => {
     }
     if (
       containsCensoredWord(title, badWords) ||
-      containsCensoredWord(content, badWords)
+      containsCensoredWord(content, badWords) ||
+      containsCensoredWord(tags, badWords)
     ) {
       return res
         .status(400)
@@ -623,24 +672,23 @@ const postsRouter = (pool, getInternalUserId) => {
   });
 
   router.get("/foryou", ClerkExpressWithAuth(), async (req, res) => {
+    if (!req.auth.userId) {
+      return res.status(401).json({ error: "Niste autorizovani." });
+    }
 
-        if (!req.auth.userId) {
-            return res.status(401).json({ error: "Niste autorizovani." });
-        }
+    const clerkId = req.auth.userId;
 
-        const clerkId = req.auth.userId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 8;
+    const offset = (page - 1) * limit;
 
-        const page = parseInt(req.query.page) || 1;
-        const limit = 8;
-        const offset = (page - 1) * limit;
+    try {
+      const internalUserId = await getInternalUserId(clerkId);
+      if (!internalUserId) {
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      }
 
-        try {
-            const internalUserId = await getInternalUserId(clerkId);
-            if (!internalUserId) {
-                return res.status(404).json({ error: "Korisnik nije pronađen." });
-            }
-
-        const commonWhereClause = `
+      const commonWhereClause = `
             WHERE
                 p.status = 'published'
                 AND (
@@ -659,7 +707,7 @@ const postsRouter = (pool, getInternalUserId) => {
                 )
         `;
 
-        const postsQuery = `
+      const postsQuery = `
             SELECT
                 p.id, p.title, p.slug, p.created_at, p.view_count, p.is_pinned,
                 u.username AS author_username,
@@ -675,23 +723,26 @@ const postsRouter = (pool, getInternalUserId) => {
             LIMIT $2 OFFSET $3
         `;
 
-        const { rows } = await pool.query(postsQuery, [internalUserId, limit, offset]);
+      const { rows } = await pool.query(postsQuery, [
+        internalUserId,
+        limit,
+        offset,
+      ]);
 
-        const countQuery = `
+      const countQuery = `
             SELECT COUNT(*) FROM posts p ${commonWhereClause}
         `;
-        
-        const countResult = await pool.query(countQuery, [internalUserId]);
-        const total = parseInt(countResult.rows[0].count);
-            
-            const hasMore = offset + limit < total;
-            res.json({ posts: rows, hasMore });
 
-        } catch (error) {
-            console.error("Greška pri dohvatanju 'For You' objava:", error);
-            res.status(500).json({ error: "Greška na serveru." });
-        }
-    });
+      const countResult = await pool.query(countQuery, [internalUserId]);
+      const total = parseInt(countResult.rows[0].count);
+
+      const hasMore = offset + limit < total;
+      res.json({ posts: rows, hasMore });
+    } catch (error) {
+      console.error("Greška pri dohvatanju 'For You' objava:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
 
   return router;
 };
