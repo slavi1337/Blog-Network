@@ -14,16 +14,14 @@ const TranslatePost = ({ originalTitle, originalContent, onTranslate }) => {
   ];
 
   const fetchTranslation = async (text, targetLang) => {
+    if (!text || !text.trim()) return text;
     const response = await fetch("/api/translate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, targetLang }),
     });
-
     const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Greška na serveru.");
-    }
+    if (!response.ok) throw new Error(data.error || "Greška na serveru.");
     return data.translatedText;
   };
 
@@ -33,16 +31,57 @@ const TranslatePost = ({ originalTitle, originalContent, onTranslate }) => {
     setIsDropdownOpen(false);
 
     try {
-      // naziv i sadrzaj poruke se prevodi
-      const [translatedTitle, translatedContent] = await Promise.all([
-        fetchTranslation(originalTitle, langCode),
-        fetchTranslation(originalContent, langCode),
-      ]);
+      const untouchableRegex =
+        /(<(?:img|iframe|code|pre|a)[^>]*>.*?<\/(?:code|pre|a)>|<(?:img|iframe)[^>]*>)/gi;
 
-      onTranslate(translatedTitle, translatedContent);
+      // niz tagova koji se ne prevode ^
+      const untouchableTags = originalContent.match(untouchableRegex) || [];
+
+      // niz dijelova teksta koji se ne nalaze izmedju tih tagova ^
+      const textPartsToTranslate = originalContent
+        .split(untouchableRegex)
+        .filter((part) => part && !part.match(untouchableRegex));
+
+      // prevodjenje samo txt dijela
+      const translationPromises = textPartsToTranslate.map((part) =>
+        fetchTranslation(part, langCode)
+      );
+      translationPromises.unshift(fetchTranslation(originalTitle, langCode));
+
+      const translatedParts = await Promise.all(translationPromises);
+
+      const translatedTitle = translatedParts.shift();
+
+      // opet rekonstrukcija bloga
+      let finalContent = "";
+      let untouchableIndex = 0;
+      let translatedIndex = 0;
+
+      const reconstructionParts = originalContent.split(untouchableRegex);
+
+      reconstructionParts.forEach((part) => {
+        if (part === undefined) return;
+
+        if (untouchableTags.includes(part)) {
+          if (untouchableIndex < untouchableTags.length) {
+            finalContent += untouchableTags[untouchableIndex];
+            untouchableIndex++;
+          }
+        } else {
+          if (translatedIndex < translatedParts.length) {
+            finalContent += translatedParts[translatedIndex];
+            translatedIndex++;
+          }
+        }
+      });
+
+      onTranslate(translatedTitle, finalContent);
     } catch (err) {
       console.error("Greška pri prevođenju:", err);
-      setError(err.message || "Prevođenje nije uspjelo. Pokušajte ponovo.");
+      setError(
+        err.message ||
+          "Prevođenje nije uspjelo. Moguće je da ste dostigli limit zahtjeva."
+      );
     } finally {
       setIsLoading(false);
     }
