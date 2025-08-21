@@ -108,8 +108,10 @@ const BlogCreationPage = () => {
           throw new Error(
             uploadResult.message || `Upload ${mediaType} nije uspio.`
           );
+
+        const cleanUrl = uploadResult.url.split("?")[0];
         setUploadedFiles((prev) =>
-          new Map(prev).set(uploadResult.url, uploadResult.size)
+          new Map(prev).set(cleanUrl, uploadResult.size)
         );
         quill.insertEmbed(range.index, mediaType, uploadResult.url);
       } catch (uploadError) {
@@ -220,43 +222,32 @@ const BlogCreationPage = () => {
     };
   };
 
-  const handleContentChange = (newContent, delta, source, editor) => {
+  const handleContentChange = (newContent, delta, source) => {
     setContent(newContent);
 
     if (source === "user") {
-      const deleteOps = delta.ops.filter((op) => op.delete);
+      const regex = /src="(https?:\/\/ik\.imagekit\.io\/[^"]+)"/g;
+      const matches = [...newContent.matchAll(regex)];
+      const currentUrlsInEditor = new Set(
+        matches.map((match) => match[1].split("?")[0])
+      );
 
-      if (deleteOps.length > 0) {
-        const previousContents = editor.getContents(
-          0,
-          editor.getLength() - delta.length()
-        );
+      setUploadedFiles((prevMap) => {
+        if (prevMap.size === 0) {
+          return prevMap;
+        }
 
-        let checkIndex = 0;
-        delta.ops.forEach((op) => {
-          if (op.retain) {
-            checkIndex += op.retain;
-          } else if (op.delete) {
-            const deletedItem = previousContents.slice(
-              checkIndex,
-              checkIndex + op.delete
-            );
-            deletedItem.ops.forEach((deletedOp) => {
-              if (deletedOp.insert && typeof deletedOp.insert === "object") {
-                const deletedUrl =
-                  deletedOp.insert.image || deletedOp.insert.video;
-                if (deletedUrl) {
-                  setUploadedFiles((prev) => {
-                    const newFiles = new Map(prev);
-                    newFiles.delete(deletedUrl);
-                    return newFiles;
-                  });
-                }
-              }
-            });
+        const newMap = new Map();
+
+        for (const [url, size] of prevMap.entries()) {
+          const cleanUrl = url.split("?")[0];
+          if (currentUrlsInEditor.has(cleanUrl)) {
+            newMap.set(url, size);
           }
-        });
-      }
+        }
+
+        return newMap.size !== prevMap.size ? newMap : prevMap;
+      });
     }
   };
 
@@ -326,7 +317,11 @@ const BlogCreationPage = () => {
                 filesData.forEach((file) =>
                   initialFilesMap.set(file.url, file.size)
                 );
-                setUploadedFiles(initialFilesMap);
+
+                setUploadedFiles((prevMap) => {
+                  const finalMap = new Map([...prevMap, ...initialFilesMap]);
+                  return finalMap;
+                });
               }
             }
           }
