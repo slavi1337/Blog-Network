@@ -8,6 +8,7 @@ const DraftsPage = () => {
   const { getToken } = useAuth();
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState("drafts");
 
   const fetchDrafts = async () => {
     setLoading(true);
@@ -19,7 +20,7 @@ const DraftsPage = () => {
       const data = await res.json();
       setDrafts(data);
     } catch (error) {
-      console.error("Greška pri dohvatanju draftova:", error);
+      console.error("Greška pri dohvatanju objava:", error);
     } finally {
       setLoading(false);
     }
@@ -61,6 +62,13 @@ const DraftsPage = () => {
     return "Radna verzija (Draft)";
   };
 
+  const filteredPosts = drafts.filter((post) => {
+    if (currentView === "drafts") {
+      return post.status !== "scheduled";
+    }
+    return post.status === "scheduled";
+  });
+
   if (loading) return <p>Učitavanje...</p>;
 
   return (
@@ -68,9 +76,39 @@ const DraftsPage = () => {
       <h1 className="text-2xl font-bold mb-6">
         Moji Draftovi i Zakazane Objave
       </h1>
+
+      <div className="flex items-center gap-4 mb-6">
+        <span className="text-sm font-medium">Prikaži:</span>
+        <div className="relative inline-flex items-center w-52 h-10 rounded-full p-1 bg-gray-200">
+          <div
+            className={`absolute top-1 left-1 w-1/2 h-8 bg-orange-500 rounded-full shadow transition-transform duration-300 ease-in-out ${
+              currentView === "scheduled" ? "translate-x-full" : "translate-x-0"
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => setCurrentView("drafts")}
+            className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium transition-colors ${
+              currentView === "drafts" ? "text-white" : "text-gray-600"
+            }`}
+          >
+            Draftovi
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentView("scheduled")}
+            className={`relative z-10 flex-1 h-8 flex items-center justify-center text-sm font-medium transition-colors ${
+              currentView === "scheduled" ? "text-white" : "text-gray-600"
+            }`}
+          >
+            Zakazane
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-4">
-        {drafts.length > 0 ? (
-          drafts.map((post) => (
+        {filteredPosts.length > 0 ? (
+          filteredPosts.map((post) => (
             <div
               key={post.id}
               className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center"
@@ -115,7 +153,9 @@ const DraftsPage = () => {
           ))
         ) : (
           <p className="text-gray-600">
-            Nemate sačuvanih draftova ili zakazanih objava.
+            {currentView === "drafts"
+              ? "Nemate sačuvanih draftova."
+              : "Nemate zakazanih objava."}
           </p>
         )}
       </div>
