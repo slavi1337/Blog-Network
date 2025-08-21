@@ -366,7 +366,7 @@ const SinglePostPage = () => {
       },
       (err) => {
         console.error("Failed to copy: ", err);
-        setCopySuccess("Kopiranje nije uspelo.");
+        setCopySuccess("Kopiranje nije uspjelo.");
         setTimeout(() => setCopySuccess(""), 2000);
       }
     );
