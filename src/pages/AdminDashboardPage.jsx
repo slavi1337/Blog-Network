@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { confirmAction } from "../utils/confirm";
 
 const CreateAdminForm = ({ onAdminCreated }) => {
   const [username, setUsername] = useState("");
@@ -127,7 +128,8 @@ const CensoredWordsManager = () => {
   };
 
   const handleDeleteWord = async (wordId) => {
-    if (!window.confirm("Da li ste sigurni?")) return;
+    const confirmed = await confirmAction("Da li ste sigurni?");
+    if (!confirmed) return;
     try {
       await fetch(`/api/admin/censored-words/${wordId}`, { method: "DELETE" });
       fetchWords();
@@ -221,12 +223,11 @@ const AdminDashboardPage = () => {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (
-      !window.confirm(
-        `Da li ste APSOLUTNO sigurni da želite da obrišete ovog korisnika i SVE njegove objave, komentare i interakcije? Ova akcija je nepovratna.`
-      )
-    )
-      return;
+    const confirmed = await confirmAction(
+      `Da li ste APSOLUTNO sigurni da želite da obrišete ovog korisnika i SVE njegove objave, komentare i interakcije? Ova akcija je nepovratna.`
+    );
+
+    if (!confirmed) return;
     setData((currentData) => currentData.filter((item) => item.id !== userId));
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
@@ -266,12 +267,10 @@ const AdminDashboardPage = () => {
   };
 
   const handleDeleteAdmin = async (adminId) => {
-    if (
-      !window.confirm(
-        "Da li ste sigurni da želite da obrišete ovog administratora?"
-      )
-    )
-      return;
+    const confirmed = await confirmAction(
+      "Da li ste sigurni da želite da obrišete ovog administratora?"
+    );
+    if (!confirmed) return;
     try {
       const response = await fetch(`/api/admin/admins/${adminId}`, {
         method: "DELETE",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import { confirmAction } from "../utils/confirm";
 
 const ManageModerators = () => {
   const { getToken } = useAuth();
@@ -61,12 +62,11 @@ const ManageModerators = () => {
   };
 
   const handleRemoveModerator = async (moderatorId) => {
-    if (
-      !window.confirm(
-        "Da li ste sigurni da želite da uklonite ovog moderatora?"
-      )
-    )
-      return;
+    const confirmed = await confirmAction(
+      "Da li ste sigurni da želite da uklonite ovog moderatora?"
+    );
+
+    if (!confirmed) return;
 
     try {
       const token = await getToken();

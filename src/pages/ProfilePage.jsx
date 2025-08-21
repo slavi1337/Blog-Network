@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
+import { confirmAction } from "../utils/confirm";
 
 const BellOnIcon = () => (
   <svg
@@ -170,13 +171,12 @@ const ProfilePage = () => {
     if (!isSignedIn || !profileData) return;
     const newBlockState = !viewerHasBlocked;
 
-    if (
-      newBlockState &&
-      !window.confirm(
-        `Da li ste sigurni da želite da blokirate korisnika @${profileData.username}? Nećete moći da vidite njegove objave i komentare, i biće automatski otpraćen.`
-      )
-    )
-      return;
+    if (newBlockState) {
+      const confirmed = await confirmAction(
+        `Da li ste sigurni da želite da blokirate korisnika @${profileData.username}? Neće moći da vidi Vaše objave, a ni Vi njegove i biće automatski otpraćen.`
+      );
+      if (!confirmed) return;
+    }
 
     if (newBlockState && isFollowing) {
       setProfileData((prev) => ({
@@ -259,13 +259,11 @@ const ProfilePage = () => {
   if (!profileData)
     return <div className="text-center p-10">Nema podataka o profilu.</div>;
 
-
-  profileData.posts.forEach(post => {
+  profileData.posts.forEach((post) => {
     post.author_profile_picture_url = profileData.profile_picture_url;
   });
 
   const isBlockedRelation = viewerHasBlocked || profileOwnerHasBlocked;
-
 
   return (
     <div className="px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-10">

@@ -5,6 +5,7 @@ import CreateComment from "../components/CreateComment";
 import CommentSection from "../components/CommentSection";
 import TranslatePost from "../components/TranslatePost";
 import toast from "react-hot-toast";
+import { confirmAction } from "../utils/confirm";
 
 const ThumbsUpIcon = () => (
   <svg
@@ -262,10 +263,10 @@ const SinglePostPage = () => {
   };
 
   const handleDeletePost = async () => {
-    if (
-      !window.confirm("Da li ste sigurni da želite trajno obrisati ovu objavu?")
-    )
-      return;
+    const confirmed = await confirmAction(
+      "Da li ste sigurni da želite trajno obrisati ovu objavu?"
+    );
+    if (!confirmed) return;
 
     try {
       const token = await getToken();
@@ -291,8 +292,10 @@ const SinglePostPage = () => {
   };
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm("Da li ste sigurni da želite obrisati ovaj komentar?"))
-      return;
+    const confirmed = await confirmAction(
+      "Da li ste sigurni da želite obrisati ovaj komentar?"
+    );
+    if (!confirmed) return;
 
     try {
       const token = await getToken();

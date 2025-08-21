@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { confirmAction } from "../utils/confirm";
 
 const DraftsPage = () => {
   const { getToken } = useAuth();
@@ -29,8 +30,10 @@ const DraftsPage = () => {
   }, [getToken]);
 
   const handleDeleteDraft = async (postId) => {
-    if (!window.confirm("Da li ste sigurni da želite da obrišete ovaj unos?"))
-      return;
+    const confirmed = await confirmAction(
+      "Da li ste sigurni da želite da obrišete ovaj unos?"
+    );
+    if (!confirmed) return;
 
     setDrafts((prev) => prev.filter((p) => p.id !== postId));
 
