@@ -113,7 +113,6 @@ const PostList = ({ posts }) => {
           {post.tags && post.tags.trim() !== "" && (
             <div className="mt-3 flex flex-wrap gap-2 items-center">
               <span className="text-sm text-gray-600">Tagovi:</span>
-              Tagovi:
               {post.tags.split(", ").map((tag, index) => (
                 <button
                   key={index}
