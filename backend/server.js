@@ -188,6 +188,7 @@ app.get("/api/public/search", async (req, res) => {
     tags,
     sortBy,
     sortOrder,
+    currentUserId,
   } = req.query;
 
   let params = [];
@@ -249,6 +250,41 @@ app.get("/api/public/search", async (req, res) => {
     }
   }
 
+  let numericUserId = null;
+
+  if (currentUserId) {
+    try {
+
+      const userResult = await pool.query(
+        "SELECT id FROM users WHERE clerk_id = $1",
+        [currentUserId]
+      );
+
+      if (userResult.rows.length > 0) {
+        numericUserId = userResult.rows[0].id;
+      }
+    } catch (dbError) {
+      console.error(
+        "Greška pri dohvatanju internog ID-ja korisnika:",
+        dbError
+      );
+    }
+  }
+
+  if (numericUserId) {
+    whereClauses.push(
+      `p.author_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = $${paramIndex})`
+    );
+    params.push(numericUserId);
+    paramIndex++;
+
+    whereClauses.push(
+      `p.author_id NOT IN (SELECT blocker_id FROM blocked_users WHERE blocked_id = $${paramIndex})`
+    );
+    params.push(numericUserId);
+    paramIndex++;
+  }
+
   const whereClause = `WHERE ${whereClauses.join(" AND ")}`;
 
   const allowedSortBy = {
@@ -282,9 +318,10 @@ app.get("/api/public/search", async (req, res) => {
 
   try {
     const { rows } = await pool.query(postsQuery, finalParams);
-
+    
+    const countParams = params;
     const countQuery = `SELECT COUNT(*) FROM posts p ${whereClause}`;
-    const countResult = await pool.query(countQuery, params);
+    const countResult = await pool.query(countQuery, countParams);
 
     const total = parseInt(countResult.rows[0].count);
     const hasMore = offset + limit < total;

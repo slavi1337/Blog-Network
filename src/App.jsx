@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useSearchParams } from "react-router-dom";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useUser } from "@clerk/clerk-react";
 import { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { Toaster } from "react-hot-toast"; //za nove alerte i modale da ne bude def oni
@@ -36,6 +36,8 @@ const HomePage = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [searchParams] = useSearchParams();
+  const { user } = useUser();
+  const currentUserId = user?.id;
   const searchQuery = searchParams.get("search") || "";
   const searchType = searchParams.get("type") || "posts";
   const minLikes = searchParams.get("minLikes") || "";
@@ -63,6 +65,11 @@ const HomePage = () => {
 
       params.append("sortBy", sortBy);
       params.append("sortOrder", sortOrder);
+
+      if (currentUserId) {
+        params.append("currentUserId", currentUserId);
+      }
+
       params.append("page", "1");
 
       try {
@@ -94,6 +101,7 @@ const HomePage = () => {
     sortBy,
     sortOrder,
     category,
+    currentUserId,
   ]);
 
   const fetchMorePosts = async () => {
@@ -107,6 +115,11 @@ const HomePage = () => {
     tags.forEach((tag) => params.append("tags", tag));
     params.append("sortBy", sortBy);
     params.append("sortOrder", sortOrder);
+
+    if (currentUserId) {
+      params.append("currentUserId", currentUserId);
+    }
+
     params.append("page", page);
 
     try {
@@ -141,13 +154,18 @@ const HomePage = () => {
     }
     try {
       const params = new URLSearchParams({ search: searchQuery });
+
+      if (currentUserId) {
+        params.append("currentUserId", currentUserId);
+      }
+
       const res = await fetch(`/api/public/search/users?${params.toString()}`);
       const data = await res.json();
       setUsers(data || []);
     } catch (error) {
       console.error("Greška prilikom dohvatanja korisnika:", error);
     }
-  }, [searchQuery]);
+  }, [searchQuery, currentUserId]); 
 
   useEffect(() => {
     if (searchQuery && searchType === "users") {
