@@ -138,11 +138,13 @@ const SearchBar = ({ onSearch }) => {
 
   const handleResetFilters = () => {
     setFilters(initialFiltersState);
+    setQuery("");
     const processedFilters = {
       ...initialFiltersState,
       tags: [],
     };
-    onSearch(query, processedFilters);
+    // u slucaju da treba da reset filters dugme refresha pretragu
+    // onSearch("", processedFilters);
   };
 
   const handleRefreshSearch = () => {
