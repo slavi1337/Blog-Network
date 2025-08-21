@@ -165,7 +165,7 @@ const HomePage = () => {
     } catch (error) {
       console.error("Greška prilikom dohvatanja korisnika:", error);
     }
-  }, [searchQuery, currentUserId]); 
+  }, [searchQuery, currentUserId]);
 
   useEffect(() => {
     if (searchQuery && searchType === "users") {
