@@ -8,10 +8,11 @@ INSERT INTO users (id, username, email, password_hash, first_name, last_name, ro
 (3, 'jelena_citalac', 'jelena.citalac@example.com', 'Jelena', 'Jelić', 'standard'),
 (4, 'ivan_moderator', 'ivan.mod@example.com', 'Ivan', 'Ivić', 'moderator');
 
-INSERT INTO categories (id, name, slug) VALUES
-(1, 'Tehnologija', 'tehnologija'),
-(2, 'Putovanja', 'putovanja'),
-(3, 'Kuvanje', 'kuvanje');
+INSERT INTO categories (id, name, slug, is_deletable) VALUES
+(1, 'Ostalo', 'ostalo', FALSE),         
+(2, 'Tehnologija', 'tehnologija', TRUE),
+(3, 'Putovanja', 'putovanja', TRUE),   
+(4, 'Kuvanje', 'kuvanje', TRUE);
 
 INSERT INTO tags (id, name) VALUES
 (1, 'PostgreSQL'),
