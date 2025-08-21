@@ -3,6 +3,118 @@ import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { confirmAction } from "../utils/confirm";
 
+const CategoriesManager = () => {
+  const [categories, setCategories] = useState([]);
+  const [newName, setNewName] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/categories");
+      if (res.ok) setCategories(await res.json());
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!newName.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Došlo je do greške.");
+      }
+
+      setNewName("");
+      fetchCategories();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    const confirmed = await confirmAction(
+      'Da li ste sigurni? Blogovi u ovoj kategoriji neće biti obrisani, ali će se prebaciti u kategoriju "Ostalo"'
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/admin/categories/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast.success("Kategorija uspješno obrisana.");
+        fetchCategories();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Brisanje nije uspjelo.");
+      }
+    } catch (err) {
+      toast.error(err.message);
+      console.error("Greška pri brisanju kategorije:", err);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-4 text-textcolor">
+        Upravljanje Kategorijama
+      </h2>
+      <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="Ime nove kategorije..."
+          className="flex-grow p-2 border border-border-main rounded bg-background text-textcolor"
+        />
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
+          {isSubmitting ? "Dodavanje..." : "Dodaj"}
+        </button>
+      </form>
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      <div className="space-y-2">
+        {categories.map((cat) => (
+          <div
+            key={cat.id}
+            className="flex justify-between items-center bg-background p-2 rounded"
+          >
+            <span className="text-textcolor">{cat.name}</span>
+            <button
+              onClick={() => handleDeleteCategory(cat.id)}
+              className="text-red-500 hover:text-red-700"
+            >
+              Obriši
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const CreateAdminForm = ({ onAdminCreated }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -209,7 +321,8 @@ const AdminDashboardPage = () => {
     if (
       activeTab === "issues" ||
       activeTab === "users" ||
-      activeTab === "admins"
+      activeTab === "admins" ||
+      activeTab === "categories"
     ) {
       fetchData(activeTab);
     } else {
@@ -490,6 +603,17 @@ const AdminDashboardPage = () => {
           >
             Cenzura
           </button>
+
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+              activeTab === "categories"
+                ? "bg-primary text-white shadow"
+                : "text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            Kategorije
+          </button>
         </nav>
       </div>
 
@@ -502,6 +626,7 @@ const AdminDashboardPage = () => {
             {activeTab === "users" && renderUsersTable()}
             {activeTab === "admins" && renderAdminsTable()}
             {activeTab === "censored" && <CensoredWordsManager />}
+            {activeTab === "categories" && <CategoriesManager />}
           </div>
         )}
       </div>
