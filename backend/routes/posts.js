@@ -122,7 +122,7 @@ const postsRouter = (pool, getInternalUserId) => {
       await client.query("COMMIT");
 
       res.status(201).json({
-        message: `Post uspješno sačuvan kao ${finalStatus}!`,
+        message: `Blog uspješno sačuvan kao ${finalStatus}!`,
         post: newPost,
       });
 
