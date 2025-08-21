@@ -37,8 +37,8 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  idleTimeoutMillis: 90000,
+  connectionTimeoutMillis: 5000,
 });
 
 // dodana max velicina za server
