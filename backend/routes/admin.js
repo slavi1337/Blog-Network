@@ -348,6 +348,114 @@ const adminRouter = (pool) => {
     }
   });
 
+  router.get("/categories", async (req, res) => {
+    try {
+      const { rows } = await pool.query(
+        "SELECT * FROM categories ORDER BY name"
+      );
+      res.status(200).json(rows);
+    } catch (error) {
+      res.status(500).send();
+    }
+  });
+
+  router.post("/categories", async (req, res) => {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Ime kategorije je obavezno." });
+    }
+
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+
+    try {
+      const result = await pool.query(
+        "INSERT INTO categories (name, slug) VALUES ($1, $2) RETURNING *",
+        [name.trim(), slug]
+      );
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      if (error.code === "23505") {
+        return res
+          .status(409)
+          .json({ error: "Kategorija sa tim imenom već postoji." });
+      }
+
+      console.error("Greška pri dodavanju kategorije:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    }
+  });
+
+  router.delete("/categories/:id", async (req, res) => {
+    const { id: categoryIdToDelete } = req.params;
+    const client = await pool.connect();
+
+    try {
+      const otherCategoryResult = await client.query(
+        "SELECT id FROM categories WHERE name = 'Ostalo' LIMIT 1"
+      );
+
+      if (otherCategoryResult.rowCount === 0) {
+        return res.status(500).json({
+          error: 'Sistemska greška: Kategorija "Ostalo" nije pronađena.',
+        });
+      }
+      const otherCategoryId = otherCategoryResult.rows[0].id;
+
+      if (Number(categoryIdToDelete) === otherCategoryId) {
+        return res.status(400).json({
+          error: 'Ne možete obrisati podrazumijevanu kategoriju "Ostalo".',
+        });
+      }
+
+      const categoryCheck = await client.query(
+        "SELECT is_deletable FROM categories WHERE id = $1",
+        [categoryIdToDelete]
+      );
+      if (
+        categoryCheck.rowCount > 0 &&
+        categoryCheck.rows[0].is_deletable === false
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Ova kategorija se ne može obrisati." });
+      }
+
+      await client.query("BEGIN");
+
+      await client.query(
+        "UPDATE posts SET category_id = $1 WHERE category_id = $2",
+        [otherCategoryId, categoryIdToDelete]
+      );
+
+      const deleteResult = await client.query(
+        "DELETE FROM categories WHERE id = $1",
+        [categoryIdToDelete]
+      );
+
+      if (deleteResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Kategorija nije pronađena." });
+      }
+
+      await client.query("COMMIT");
+
+      res.status(200).json({
+        message:
+          'Kategorija uspješno obrisana. Svi blogovi su prebačeni u kategoriju "Ostalo".',
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Greška pri brisanju kategorije:", error);
+      res.status(500).json({ error: "Greška na serveru." });
+    } finally {
+      client.release();
+    }
+  });
+
   return router;
 };
 
