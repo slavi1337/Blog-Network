@@ -113,7 +113,20 @@ const HomePage = () => {
       const res = await fetch(`/api/public/search?${params.toString()}`);
       const data = await res.json();
 
-      setPosts((prev) => [...prev, ...(data.posts || [])]);
+      if (Array.isArray(data.posts)) {
+        setPosts((prevPosts) => {
+          // set sa idovima postova koji su vec prikazani
+          const existingIds = new Set(prevPosts.map((p) => p.id));
+
+          // novi postovi bez duplikata
+          const newUniquePosts = data.posts.filter(
+            (p) => !existingIds.has(p.id)
+          );
+
+          // spojen stari + jedinstveni novi
+          return [...prevPosts, ...newUniquePosts];
+        });
+      }
       setHasMore(data.hasMore);
       setPage((prevPage) => prevPage + 1);
     } catch (error) {
