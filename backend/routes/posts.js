@@ -670,7 +670,7 @@ const postsRouter = (pool, getInternalUserId) => {
       res.status(500).json({ error: "Greška na serveru." });
     }
   });
-
+  
   router.get("/foryou", ClerkExpressWithAuth(), async (req, res) => {
     if (!req.auth.userId) {
       return res.status(401).json({ error: "Niste autorizovani." });
@@ -692,18 +692,23 @@ const postsRouter = (pool, getInternalUserId) => {
             WHERE
                 p.status = 'published'
                 AND (
-                    -- USLOV 1: Dohvati objave autora koje korisnik prati
                     p.author_id IN (
                         SELECT followed_id FROM followers WHERE follower_id = $1
                     )
                     OR
-                    -- USLOV 2: Dohvati objave koje imaju tag koji interesuje korisnika
                     EXISTS (
                         SELECT 1
                         FROM post_tags pt
                         JOIN user_interested_tags uit ON pt.tag_id = uit.tag_id
                         WHERE pt.post_id = p.id AND uit.user_id = $1
                     )
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM blocked_users bu
+                    WHERE
+                        (bu.blocker_id = $1 AND bu.blocked_id = p.author_id) OR
+                        (bu.blocker_id = p.author_id AND bu.blocked_id = $1)
                 )
         `;
 
