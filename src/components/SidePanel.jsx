@@ -5,8 +5,8 @@ const SidePanel = () => {
   const { isPanelOpen, closePanel } = useSidePanel();
 
   const panelLinks = [
-    { to: "/", text: "Početna" },
-    { to: "/for-you", text: "For You Stranica"},
+    { to: "/", text: "Početna Stranica" },
+    { to: "/for-you", text: "Stranica Za Tebe"},
     { to: "/about", text: "O Nama" },
     { to: "/report-issue", text: "Prijavi Problem" },
   ];

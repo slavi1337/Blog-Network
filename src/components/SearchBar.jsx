@@ -409,7 +409,7 @@ const SearchBar = ({ onSearch }) => {
           type="submit"
           className="px-4 py-2 text-textcolor bg-primary rounded-r-md hover:bg-primary_accent border border-gray-300"
         >
-          Search
+          Pretraži
         </button>
       </form>
     </div>
