@@ -4,6 +4,7 @@ import { useUser, useAuth } from "@clerk/clerk-react";
 import CreateComment from "../components/CreateComment";
 import CommentSection from "../components/CommentSection";
 import TranslatePost from "../components/TranslatePost";
+import toast from "react-hot-toast";
 
 const ThumbsUpIcon = () => (
   <svg
@@ -281,11 +282,11 @@ const SinglePostPage = () => {
         throw new Error(errData.error || "Greška pri brisanju objave.");
       }
 
-      alert("Objava uspješno obrisana.");
+      toast.success("Objava uspješno obrisana.");
 
       navigate("/");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -310,7 +311,7 @@ const SinglePostPage = () => {
 
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -331,15 +332,15 @@ const SinglePostPage = () => {
       if (!response.ok) {
         setIsPinned(!newPinnedState);
         const errorData = await response.json();
-        alert(errorData.error || "Greška pri akciji.");
+        toast.error(errorData.error || "Greška pri akciji.");
       } else {
-        alert(
+        toast.success(
           `Objava je uspješno ${newPinnedState ? "pinovana" : "odpinovana"}.`
         );
       }
     } catch (err) {
       setIsPinned(!newPinnedState);
-      alert("Došlo je do greške.");
+      toast.error("Došlo je do greške.");
     }
   };
 

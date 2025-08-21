@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const DraftsPage = () => {
   const { getToken } = useAuth();
@@ -40,12 +41,12 @@ const DraftsPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
-        alert("Greška pri brisanju. Osvežite stranicu.");
+        toast.error("Greška pri brisanju. Osvežite stranicu.");
         fetchDrafts();
       }
     } catch (error) {
       console.error("Greška pri brisanju:", error);
-      alert("Greška pri brisanju. Osvežite stranicu.");
+      toast.error("Greška pri brisanju. Osvježite stranicu.");
       fetchDrafts();
     }
   };

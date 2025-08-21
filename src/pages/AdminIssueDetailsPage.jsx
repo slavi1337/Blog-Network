@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const AdminIssueDetailsPage = () => {
   const { issueId } = useParams();
@@ -38,7 +39,7 @@ const AdminIssueDetailsPage = () => {
       if (!response.ok) throw new Error("Greška pri ažuriranju.");
       setIssue((prev) => ({ ...prev, status: newStatus }));
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

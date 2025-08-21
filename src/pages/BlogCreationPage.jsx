@@ -6,6 +6,7 @@ import ReactQuill from "react-quill-new";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { IKContext, IKUpload } from "imagekitio-react";
 import "react-quill-new/dist/quill.snow.css";
+import toast from "react-hot-toast";
 
 const MicrophoneIcon = ({ isListening }) => (
   <svg
@@ -446,7 +447,7 @@ const BlogCreationPage = () => {
       if (!response.ok)
         throw new Error(responseData.error || "Došlo je do nepoznate greške.");
 
-      alert(responseData.message || "Akcija uspješno izvršena!");
+      toast.success(responseData.message || "Akcija uspješno izvršena!");
 
       if (finalStatus === "draft" || finalStatus === "scheduled") {
         if (user?.username) {
@@ -458,6 +459,7 @@ const BlogCreationPage = () => {
         navigate(`/posts/${isEditMode ? slug : responseData.post.slug}`);
       }
     } catch (err) {
+      toast.error(err.message);
       setError(err.message);
     } finally {
       setIsSubmitting(false);

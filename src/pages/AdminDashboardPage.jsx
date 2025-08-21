@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const CreateAdminForm = ({ onAdminCreated }) => {
   const [username, setUsername] = useState("");
@@ -232,11 +233,11 @@ const AdminDashboardPage = () => {
         method: "DELETE",
       });
       if (!response.ok) {
-        alert("Greška pri brisanju korisnika.");
+        toast.error("Greška pri brisanju korisnika.");
         fetchData("users");
       }
     } catch (error) {
-      alert("Greška pri brisanju korisnika.");
+      toast.error("Greška pri brisanju korisnika.");
       fetchData("users");
     }
   };
@@ -255,11 +256,11 @@ const AdminDashboardPage = () => {
         body: JSON.stringify({ newRole }),
       });
       if (!response.ok) {
-        alert("Greška pri promjeni uloge.");
+        toast.error("Greška pri promjeni uloge.");
         setData(originalData);
       }
     } catch (err) {
-      alert("Greška pri promjeni uloge.");
+      toast.error("Greška pri promjeni uloge.");
       setData(originalData);
     }
   };
@@ -277,10 +278,10 @@ const AdminDashboardPage = () => {
       });
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.error);
-      alert(responseData.message);
+      toast.success(responseData.message);
       fetchData("admins");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

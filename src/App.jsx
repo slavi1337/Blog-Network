@@ -2,6 +2,7 @@ import { Routes, Route, Link, useSearchParams } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
+import { Toaster } from "react-hot-toast"; //za nove alerte i modale da ne bude def oni
 import PostList from "./components/PostList.jsx";
 import UserListSearch from "./components/UserListSearch.jsx";
 
@@ -45,7 +46,7 @@ const HomePage = () => {
   const sortBy = searchParams.get("sortBy") || "createdAt";
   const sortOrder = searchParams.get("sortOrder") || "desc";
   const category = searchParams.get("category") || "";
-  
+
   const stringifiedTags = JSON.stringify(tags);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ const HomePage = () => {
       if (maxLikes) params.append("maxLikes", maxLikes);
       if (minDate) params.append("minDate", minDate);
       if (maxDate) params.append("maxDate", maxDate);
-      tags.forEach(tag => params.append("tags", tag));
+      tags.forEach((tag) => params.append("tags", tag));
 
       params.append("sortBy", sortBy);
       params.append("sortOrder", sortOrder);
@@ -67,7 +68,7 @@ const HomePage = () => {
       try {
         const res = await fetch(`/api/public/search?${params.toString()}`);
         const data = await res.json();
-        
+
         setPosts(data.posts || []);
         setHasMore(data.hasMore);
         setPage(2);
@@ -75,16 +76,27 @@ const HomePage = () => {
         console.error("Greška prilikom dohvatanja postova:", error);
       }
     };
-    
-    if (searchType === 'users') {
+
+    if (searchType === "users") {
       setPosts([]);
       setHasMore(false);
     } else {
       performSearch();
     }
-  }, [searchQuery, searchType, minLikes, maxLikes, minDate, maxDate, stringifiedTags, sortBy, sortOrder, category]); 
+  }, [
+    searchQuery,
+    searchType,
+    minLikes,
+    maxLikes,
+    minDate,
+    maxDate,
+    stringifiedTags,
+    sortBy,
+    sortOrder,
+    category,
+  ]);
 
-const fetchMorePosts = async () => {
+  const fetchMorePosts = async () => {
     const params = new URLSearchParams();
     if (searchQuery) params.append("search", searchQuery);
     if (category) params.append("category", category);
@@ -92,19 +104,18 @@ const fetchMorePosts = async () => {
     if (maxLikes) params.append("maxLikes", maxLikes);
     if (minDate) params.append("minDate", minDate);
     if (maxDate) params.append("maxDate", maxDate);
-    tags.forEach(tag => params.append("tags", tag));
+    tags.forEach((tag) => params.append("tags", tag));
     params.append("sortBy", sortBy);
     params.append("sortOrder", sortOrder);
     params.append("page", page);
 
     try {
-
       const res = await fetch(`/api/public/search?${params.toString()}`);
       const data = await res.json();
 
-      setPosts(prev => [...prev, ...(data.posts || [])]);
+      setPosts((prev) => [...prev, ...(data.posts || [])]);
       setHasMore(data.hasMore);
-      setPage(prevPage => prevPage + 1);
+      setPage((prevPage) => prevPage + 1);
     } catch (error) {
       console.error("Greška prilikom dohvatanja dodatnih postova:", error);
     }
@@ -126,7 +137,7 @@ const fetchMorePosts = async () => {
   }, [searchQuery]);
 
   useEffect(() => {
-    if (searchQuery && searchType === 'users') {
+    if (searchQuery && searchType === "users") {
       fetchUsers();
     } else if (!searchQuery) {
       setUsers([]);
@@ -135,7 +146,7 @@ const fetchMorePosts = async () => {
 
   const renderContent = () => {
     if (searchQuery) {
-      if (searchType === 'users') {
+      if (searchType === "users") {
         return <UserListSearch users={users} />;
       }
       return (
@@ -161,7 +172,7 @@ const fetchMorePosts = async () => {
         <InfiniteScroll
           className="border-t-2 border-gray-400"
           dataLength={posts.length}
-          next={fetchMorePosts} 
+          next={fetchMorePosts}
           hasMore={hasMore}
           loader={<h4 className="text-center text-gray-500">Učitavanje...</h4>}
           endMessage={
@@ -170,8 +181,12 @@ const fetchMorePosts = async () => {
             </p>
           }
         >
-
-          {minLikes || maxLikes || minDate || maxDate || category || tags!="" ? (
+          {minLikes ||
+          maxLikes ||
+          minDate ||
+          maxDate ||
+          category ||
+          tags != "" ? (
             <div>
               <h1 className="font-bold text-xl">Aktivni filteri: </h1>
               {minLikes && <div>Minimalan broj lajkova: {minLikes}</div>}
@@ -182,7 +197,7 @@ const fetchMorePosts = async () => {
               {tags != "" && <div>Tagovi: {tags.join(", ")}</div>}
             </div>
           ) : (
-            <div>Nema aktivnih  filtera</div>
+            <div>Nema aktivnih filtera</div>
           )}
 
           <PostList posts={posts} />
@@ -197,7 +212,8 @@ const fetchMorePosts = async () => {
         <div>
           <h1 className="text-4xl font-bold">Dobrodošli na Blog Network!</h1>
           <p className="mt-4">
-            Ovo je početna stranica. Izaberite opciju iz navigacije ili započnite sa kreiranjem!
+            Ovo je početna stranica. Izaberite opciju iz navigacije ili
+            započnite sa kreiranjem!
           </p>
         </div>
 
@@ -232,41 +248,61 @@ const fetchMorePosts = async () => {
 
 const App = () => {
   return (
-    <Routes>
-      <Route path="/sign-in/*" element={<SignInPage />} />
-      <Route path="/sign-up/*" element={<SignUpPage />} />
-
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-      <Route
-        path="/admin/issues/:issueId"
-        element={<AdminIssueDetailsPage />}
+    <>
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          success: {
+            style: {
+              background: "#22c55e",
+              color: "white",
+            },
+          },
+          error: {
+            style: {
+              background: "#ef4444",
+              color: "white",
+            },
+          },
+        }}
       />
 
-      <Route path="/" element={<MainLayout />}>
-        <Route index element={<HomePage />} />
+      <Routes>
+        <Route path="/sign-in/*" element={<SignInPage />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
 
-        <Route path="edit-post/:slug" element={<BlogCreationPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route
+          path="/admin/issues/:issueId"
+          element={<AdminIssueDetailsPage />}
+        />
 
-        <Route path="create-blog" element={<BlogCreationPage />} />
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<HomePage />} />
 
-        <Route path="about" element={<AboutPage />} />
-        <Route path="report-issue" element={<ReportIssuePage />} />
-        <Route path="for-you" element={<ForYouPage />}/>
+          <Route path="edit-post/:slug" element={<BlogCreationPage />} />
 
-        <Route path="profile/:username" element={<ProfilePage />}>
-          <Route index element={<ProfilePosts />} />
-          <Route path="saved" element={<SavedPosts />} />
-          <Route path="history" element={<ReadingHistory />} />
-          <Route path="edit" element={<EditProfilePage />} />
-          <Route path="following" element={<FollowingPage />} />
-          <Route path="followers" element={<FollowersPage />} />
-          <Route path="drafts" element={<DraftsPage />} />
+          <Route path="create-blog" element={<BlogCreationPage />} />
+
+          <Route path="about" element={<AboutPage />} />
+          <Route path="report-issue" element={<ReportIssuePage />} />
+          <Route path="for-you" element={<ForYouPage />} />
+
+          <Route path="profile/:username" element={<ProfilePage />}>
+            <Route index element={<ProfilePosts />} />
+            <Route path="saved" element={<SavedPosts />} />
+            <Route path="history" element={<ReadingHistory />} />
+            <Route path="edit" element={<EditProfilePage />} />
+            <Route path="following" element={<FollowingPage />} />
+            <Route path="followers" element={<FollowersPage />} />
+            <Route path="drafts" element={<DraftsPage />} />
+          </Route>
+
+          <Route path="/posts/:slug" element={<SinglePostPage />} />
         </Route>
-
-        <Route path="/posts/:slug" element={<SinglePostPage />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 };
 
