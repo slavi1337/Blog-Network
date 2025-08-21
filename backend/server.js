@@ -701,7 +701,7 @@ app.get("/api/posts/saved", ClerkExpressWithAuth(), async (req, res) => {
 
   try {
     const query = `
-      SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username
+      SELECT p.id, p.title, p.slug, p.created_at, u_author.username as author_username, u_author.profile_picture_url as author_profile_picture_url
       FROM saved_posts sp
       JOIN posts p ON sp.post_id = p.id
       JOIN users u_reader ON sp.user_id = u_reader.id
