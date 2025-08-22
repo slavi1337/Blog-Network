@@ -181,6 +181,7 @@ CREATE TABLE reported_issues (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMPTZ,
     resolved_by_admin_id INT,
+	screenshot_url VARCHAR(255),
     CONSTRAINT fk_reporter_user FOREIGN KEY(reporter_user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_resolved_by_admin FOREIGN KEY(resolved_by_admin_id) REFERENCES admins(id) ON DELETE SET NULL
 );
