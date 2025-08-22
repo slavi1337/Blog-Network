@@ -254,7 +254,6 @@ app.get("/api/public/search", async (req, res) => {
 
   if (currentUserId) {
     try {
-
       const userResult = await pool.query(
         "SELECT id FROM users WHERE clerk_id = $1",
         [currentUserId]
@@ -264,10 +263,7 @@ app.get("/api/public/search", async (req, res) => {
         numericUserId = userResult.rows[0].id;
       }
     } catch (dbError) {
-      console.error(
-        "Greška pri dohvatanju internog ID-ja korisnika:",
-        dbError
-      );
+      console.error("Greška pri dohvatanju internog ID-ja korisnika:", dbError);
     }
   }
 
@@ -318,7 +314,7 @@ app.get("/api/public/search", async (req, res) => {
 
   try {
     const { rows } = await pool.query(postsQuery, finalParams);
-    
+
     const countParams = params;
     const countQuery = `SELECT COUNT(*) FROM posts p ${whereClause}`;
     const countResult = await pool.query(countQuery, countParams);
@@ -442,6 +438,7 @@ app.get("/api/notifications", ClerkExpressWithAuth(), async (req, res) => {
                 p.slug AS post_slug,
                 p.title AS post_title,
                 ri.description AS issue_description,
+                n.related_entity_id,
                 
                 CASE
                     WHEN n.type = 'new_post_from_followed' 
@@ -538,8 +535,7 @@ app.post(
   ClerkExpressWithAuth({ optional: true }),
   async (req, res) => {
     const clerkId = req.auth.userId;
-    const { issueType, description, relatedEntityType, relatedEntityId } =
-      req.body;
+    const { issueType, description, screenshotUrl } = req.body;
 
     if (!issueType || !description) {
       return res
@@ -557,20 +553,19 @@ app.post(
     }
 
     try {
-      const reporterUserId = await getInternalUserId(clerkId); // null ako user nije prijavljen
+      const reporterUserId = await getInternalUserId(clerkId);
 
       const query = `
             INSERT INTO reported_issues 
-                (reporter_user_id, issue_type, description, related_entity_type, related_entity_id)
-            VALUES ($1, $2, $3, $4, $5)
+                (reporter_user_id, issue_type, description, screenshot_url)
+            VALUES ($1, $2, $3, $4)
             RETURNING id;
         `;
       const values = [
         reporterUserId,
         issueType,
         description,
-        relatedEntityType || null,
-        relatedEntityId || null,
+        screenshotUrl || null,
       ];
 
       await pool.query(query, values);
