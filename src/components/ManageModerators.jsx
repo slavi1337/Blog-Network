@@ -86,10 +86,12 @@ const ManageModerators = () => {
 
   return (
     <div className="border-t pt-6 mt-6">
-      <h3 className="font-semibold text-lg mb-4">Upravljanje Moderatorima</h3>
+      <h3 className="font-semibold text-lg mb-4">
+        Upravljanje personalnim moderatorima
+      </h3>
       <p className="text-sm text-gray-500 mb-4">
-        Dodajte korisnike sa ulogom "moderator" da vam pomažu u upravljanju
-        objavama i komentarima.
+        Dodajte korisnike koji će biti Vaši personalni moderatori. Oni Vam
+        pomažu u upravljanju objavama i komentarima.
       </p>
 
       <div className="space-y-3 mb-6">
