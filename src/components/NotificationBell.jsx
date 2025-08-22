@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -32,6 +32,7 @@ const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
+  const notificationRef = useRef(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!isSignedIn || !isLoaded) return;
@@ -70,6 +71,22 @@ const NotificationBell = () => {
       return () => clearInterval(interval);
     }
   }, [isLoaded, isSignedIn, fetchNotifications]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
@@ -170,7 +187,7 @@ const NotificationBell = () => {
     : notifications.filter((n) => !n.is_read);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={notificationRef}>
       <button onClick={handleOpen}>
         <BellIcon hasUnread={unreadCount > 0} />
       </button>
