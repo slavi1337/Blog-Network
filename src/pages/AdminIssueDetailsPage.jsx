@@ -14,6 +14,7 @@ const AdminIssueDetailsPage = () => {
       return;
     }
     const fetchIssueDetails = async () => {
+      setLoading(true);
       try {
         const response = await fetch(`/api/admin/issues/${issueId}`);
         if (response.status === 401) return navigate("/admin/login");
@@ -37,7 +38,13 @@ const AdminIssueDetailsPage = () => {
         body: JSON.stringify({ newStatus }),
       });
       if (!response.ok) throw new Error("Greška pri ažuriranju.");
-      setIssue((prev) => ({ ...prev, status: newStatus }));
+
+      toast.success(`Status problema je ažuriran na "${newStatus}".`);
+      setIssue((prev) => ({
+        ...prev,
+        status: newStatus,
+        resolved_at: new Date(),
+      }));
     } catch (err) {
       toast.error(err.message);
     }
@@ -82,24 +89,36 @@ const AdminIssueDetailsPage = () => {
             {issue.resolved_by_admin_username || "N/A"}
           </div>
           <div>
-            <strong>Riješeno:</strong>{" "}
+            <strong>Rešeno:</strong>{" "}
             {issue.resolved_at
               ? new Date(issue.resolved_at).toLocaleString()
               : "N/A"}
           </div>
         </div>
-        {issue.related_entity_type && (
-          <div className="mt-4 text-sm">
-            <strong>Povezani Entitet:</strong> {issue.related_entity_type} (ID:{" "}
-            {issue.related_entity_id})
-          </div>
-        )}
+
         <div className="mt-6 border-t pt-4">
           <h2 className="font-semibold mb-2">Opis problema:</h2>
           <p className="whitespace-pre-wrap bg-background p-4 rounded">
             {issue.description}
           </p>
         </div>
+
+        {issue.screenshot_url && (
+          <div className="mt-6 border-t pt-4">
+            <h2 className="font-semibold mb-2">Priloženi Screenshot:</h2>
+            <a
+              href={issue.screenshot_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src={issue.screenshot_url}
+                alt="Screenshot problema"
+                className="max-w-full h-auto border rounded-md"
+              />
+            </a>
+          </div>
+        )}
 
         {issue.status !== "resolved" && issue.status !== "rejected" && (
           <div className="mt-6 border-t pt-4 flex gap-4">
