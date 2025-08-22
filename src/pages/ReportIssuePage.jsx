@@ -1,43 +1,96 @@
 import { useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import toast from "react-hot-toast";
 
 const ReportIssuePage = () => {
   const { getToken } = useAuth();
   const [issueType, setIssueType] = useState("bug_report");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  const [screenshotFile, setScreenshotFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.size > 4 * 1024 * 1024) {
+      toast.error("Fajl je prevelik. Maksimalna veličina je 4MB.");
+      e.target.value = null;
+      return;
+    }
+    setScreenshotFile(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!description.trim()) {
-      setError("Opis problema ne može biti prazan.");
+      toast.error("Opis problema ne može biti prazan.");
       return;
     }
+
     setIsSubmitting(true);
-    setError("");
-    setSuccess("");
+    let screenshotUrl = null;
+
     try {
+      if (screenshotFile) {
+        setIsUploading(true);
+
+        const authResponse = await fetch("/api/upload-auth");
+        if (!authResponse.ok)
+          throw new Error("Autentifikacija za upload nije uspjela.");
+        const authParams = await authResponse.json();
+
+        const formData = new FormData();
+        formData.append("file", screenshotFile);
+        formData.append("fileName", screenshotFile.name);
+        formData.append("publicKey", import.meta.env.VITE_IK_PUBLIC_KEY);
+        formData.append("signature", authParams.signature);
+        formData.append("expire", authParams.expire);
+        formData.append("token", authParams.token);
+
+        const uploadResponse = await fetch(
+          "https://upload.imagekit.io/api/v1/files/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok)
+          throw new Error(uploadResult.message || "Upload slike nije uspeo.");
+
+        screenshotUrl = uploadResult.url;
+        setIsUploading(false);
+      }
+
       const token = await getToken();
+      const issueData = {
+        issueType,
+        description,
+        screenshotUrl,
+      };
+
       const response = await fetch("/api/issues", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-        body: JSON.stringify({ issueType, description }),
+        body: JSON.stringify(issueData),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Došlo je do greške.");
 
-      setSuccess(data.message);
+      toast.success(data.message);
       setDescription("");
+      setScreenshotFile(null);
+      document.getElementById("screenshot").value = null;
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -91,8 +144,26 @@ const ReportIssuePage = () => {
             />
           </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          {success && <p className="text-green-500 text-sm">{success}</p>}
+          <div>
+            <label
+              htmlFor="screenshot"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Snimak ekrana (Screenshot) - Opciono
+            </label>
+            <input
+              type="file"
+              id="screenshot"
+              onChange={handleFileChange}
+              accept="image/png, image/jpeg, image/gif"
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+            />
+            {screenshotFile && (
+              <p className="text-xs text-gray-500 mt-1">
+                Izabran fajl: {screenshotFile.name}
+              </p>
+            )}
+          </div>
 
           <div className="text-right">
             <button
@@ -100,7 +171,11 @@ const ReportIssuePage = () => {
               disabled={isSubmitting}
               className="py-2 px-6 rounded-lg bg-primary text-white font-semibold transition-colors disabled:bg-gray-400 hover:bg-primary-accent"
             >
-              {isSubmitting ? "Slanje..." : "Pošalji Prijavu"}
+              {isUploading
+                ? "Upload slike..."
+                : isSubmitting
+                ? "Slanje..."
+                : "Pošalji Prijavu"}
             </button>
           </div>
         </form>
