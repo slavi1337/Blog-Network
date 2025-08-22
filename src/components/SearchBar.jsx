@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const SearchBar = ({ onSearch }) => {
   const [query, setQuery] = useState("");
@@ -20,6 +20,8 @@ const SearchBar = ({ onSearch }) => {
   };
   const [filters, setFilters] = useState(initialFiltersState);
 
+  const searchBarRef = useRef(null);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -37,6 +39,25 @@ const SearchBar = ({ onSearch }) => {
 
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(event.target)) {
+        setShowFilters(false);
+      }
+    };
+
+    if (showFilters) {
+      // OVDJE JE IZMJENA: dodaj 'true' kao treći argument
+      document.addEventListener("mousedown", handleClickOutside, true);
+    }
+
+    // Obavezno očisti listener s istim postavkama
+    return () => {
+      // I OVDJE: dodaj 'true' kao treći argument
+      document.removeEventListener("mousedown", handleClickOutside, true);
+    };
+  }, [showFilters]);
 
   const handleInputChange = (e) => {
     setQuery(e.target.value);
@@ -138,11 +159,13 @@ const SearchBar = ({ onSearch }) => {
 
   const handleResetFilters = () => {
     setFilters(initialFiltersState);
+    setQuery("");
     const processedFilters = {
       ...initialFiltersState,
       tags: [],
     };
-    onSearch(query, processedFilters);
+    // u slucaju da treba da reset filters dugme refresha pretragu
+    // onSearch("", processedFilters);
   };
 
   const handleRefreshSearch = () => {
@@ -157,7 +180,7 @@ const SearchBar = ({ onSearch }) => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={searchBarRef}>
       {showFilters && (
         <div className="absolute top-16 left-0 w-128 h-auto bg-white border border-gray-300 shadow-lg z-50 p-4">
           <div className="flex flex-col gap-4 text-gray-700">
