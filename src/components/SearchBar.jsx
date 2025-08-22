@@ -42,7 +42,10 @@ const SearchBar = ({ onSearch }) => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchBarRef.current && !searchBarRef.current.contains(event.target)) {
+      if (
+        searchBarRef.current &&
+        !searchBarRef.current.contains(event.target)
+      ) {
         setShowFilters(false);
       }
     };
@@ -422,7 +425,7 @@ const SearchBar = ({ onSearch }) => {
 
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Pretraga..."
           value={query}
           onChange={handleInputChange}
           className="w-full px-4 py-2 text-gray-700 bg-white border-t border-b border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
