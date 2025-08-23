@@ -87,11 +87,12 @@ exports.deleteComment = async (req, res) => {
     const deleter = userResult.rows[0];
 
     const commentResult = await pool.query(
-      "SELECT post_id FROM comments WHERE id = $1",
+      "SELECT user_id, post_id FROM comments WHERE id = $1",
       [commentId]
     );
     if (commentResult.rowCount === 0)
       return res.status(404).json({ error: "Komentar nije pronađen." });
+    const commentAuthorId = commentResult.rows[0].user_id;
     const postId = commentResult.rows[0].post_id;
 
     const postResult = await pool.query(
@@ -107,19 +108,18 @@ exports.deleteComment = async (req, res) => {
       [postAuthorId, deleter.id]
     );
     const isPersonalModerator = permissionResult.rows[0].exists;
+    const isGlobalMod = deleter.role === "moderator";
+    const isPostAuthor = postAuthorId === deleter.id;
+    const isCommentAuthor = commentAuthorId === deleter.id;
 
-    if (
-      deleter.role !== "moderator" &&
-      postAuthorId !== deleter.id &&
-      !isPersonalModerator
-    ) {
+    if (isGlobalMod || isPostAuthor || isPersonalModerator || isCommentAuthor) {
+      await pool.query("DELETE FROM comments WHERE id = $1", [commentId]);
+      return res.status(200).json({ message: "Komentar je uspješno obrisan." });
+    } else {
       return res
         .status(403)
         .json({ error: "Nemate dozvolu za brisanje ovog komentara." });
     }
-
-    await pool.query("DELETE FROM comments WHERE id = $1", [commentId]);
-    res.status(200).json({ message: "Komentar je uspješno obrisan." });
   } catch (error) {
     console.error("Greška pri brisanju komentara:", error);
     res.status(500).json({ error: "Greška na serveru." });
