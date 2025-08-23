@@ -1,10 +1,14 @@
 import React, { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import CreateComment from "./CreateComment";
 
 const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
+
+  const isCommentAuthor = user?.username === comment.username;
+  const canDeleteThisComment = canManage || isCommentAuthor;
 
   return (
     <div className="flex items-start space-x-3 py-3 w-full">
@@ -36,7 +40,7 @@ const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
               {showReplyForm ? "Otkaži" : "Odgovori"}
             </button>
           )}
-          {canManage && (
+          {canDeleteThisComment && (
             <button
               onClick={() => onDeleteComment(comment.id)}
               className="font-semibold text-red-500 hover:text-red-700"
@@ -63,18 +67,18 @@ const Comment = ({ comment, onCommentAdded, canManage, onDeleteComment }) => {
           </div>
         )}
 
-          <div className="pl-0 md:pl-12 md:border-l-2 border-gray-200 mt-3">
-            {comment.children &&
-              comment.children.map((childComment) => (
-                <Comment
-                  key={childComment.id}
-                  comment={childComment}
-                  onCommentAdded={onCommentAdded}
-                  canManage={canManage}
-                  onDeleteComment={onDeleteComment}
-                />
-              ))}
-          </div>
+        <div className="pl-0 md:pl-12 md:border-l-2 border-gray-200 mt-3">
+          {comment.children &&
+            comment.children.map((childComment) => (
+              <Comment
+                key={childComment.id}
+                comment={childComment}
+                onCommentAdded={onCommentAdded}
+                canManage={canManage}
+                onDeleteComment={onDeleteComment}
+              />
+            ))}
+        </div>
       </div>
     </div>
   );
