@@ -3,7 +3,6 @@ CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived','scheduled');
 CREATE TYPE notification_type AS ENUM ('new_post_from_followed', 'reply_to_comment','issue_status_change');
 CREATE TYPE issue_type AS ENUM ('bug_report', 'inappropriate_content', 'spam', 'other');
 CREATE TYPE issue_status AS ENUM ('new', 'in_progress', 'resolved', 'rejected');
-CREATE TYPE media_type AS ENUM ('image', 'video', 'audio');
 
 CREATE TABLE admins (
     id SERIAL PRIMARY KEY,
@@ -37,23 +36,10 @@ CREATE TABLE tags (
     name VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE media (
-    id SERIAL PRIMARY KEY,
-    uploader_user_id INT NOT NULL,
-    file_url VARCHAR(255) NOT NULL UNIQUE,
-    file_type media_type NOT NULL,
-    file_size_bytes BIGINT NOT NULL,
-    mime_type VARCHAR(100),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    CONSTRAINT fk_uploader FOREIGN KEY(uploader_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE posts (
     id SERIAL PRIMARY KEY,
     author_id INT NOT NULL,
     category_id INT,
-    cover_media_id INT,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     content TEXT NOT NULL,
@@ -65,17 +51,7 @@ CREATE TABLE posts (
 	is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
 
     CONSTRAINT fk_author FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_category FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL,
-    CONSTRAINT fk_cover_media FOREIGN KEY(cover_media_id) REFERENCES media(id) ON DELETE SET NULL
-);
-
-CREATE TABLE post_media (
-    post_id INT NOT NULL,
-    media_id INT NOT NULL,
-    order_in_post SMALLINT DEFAULT 0,
-    PRIMARY KEY (post_id, media_id),
-    CONSTRAINT fk_post FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
-    CONSTRAINT fk_media FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
+    CONSTRAINT fk_category FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE post_tags (
@@ -206,8 +182,5 @@ CREATE INDEX idx_posts_slug ON posts(slug);
 CREATE INDEX idx_posts_category_id ON posts(category_id);
 CREATE INDEX idx_comments_post_id ON comments(post_id);
 CREATE INDEX idx_comments_user_id ON comments(user_id);
-CREATE INDEX idx_media_uploader_user_id ON media(uploader_user_id);
-CREATE INDEX idx_post_media_post_id ON post_media(post_id);
-CREATE INDEX idx_post_media_media_id ON post_media(media_id);
 CREATE INDEX idx_saved_posts_user_id ON saved_posts(user_id);
 CREATE INDEX idx_reported_issues_status ON reported_issues(status);
