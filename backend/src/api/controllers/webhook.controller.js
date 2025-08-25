@@ -32,55 +32,95 @@ exports.handleClerkWebhook = async (req, res) => {
   }
 
   const { type, data } = evt;
+  console.log(`Webhook primljen. Tip događaja: ${type}`);
 
-  if (type === "user.created") {
-    console.log(
-      "Događaj 'user.created' primljen. Podaci:",
-      JSON.stringify(data, null, 2)
-    );
+  try {
+    switch (type) {
+      case "user.created":
+        console.log("Obrađujem 'user.created'...");
+        const {
+          id,
+          email_addresses,
+          first_name,
+          last_name,
+          username,
+          image_url,
+        } = data;
+        const email = email_addresses[0]?.email_address;
 
-    const { id, email_addresses, first_name, last_name, username, image_url } =
-      data;
-    const email = email_addresses[0]?.email_address;
-    if (!email) {
-      console.error("Korisnik nema email adresu.");
-      return res
-        .status(200)
-        .json({ message: "Korisnik nema email, preskače se." });
+        if (!email) {
+          console.error("Korisnik nema email, preskače se kreiranje.");
+          break;
+        }
+
+        const dbUsername =
+          username || email.split("@")[0] + Math.floor(Math.random() * 1000);
+
+        await pool.query(
+          `INSERT INTO users (clerk_id, username, email, first_name, last_name, role, profile_picture_url)
+           VALUES ($1, $2, $3, $4, $5, 'standard', $6)
+           ON CONFLICT (clerk_id) DO NOTHING`,
+          [id, dbUsername, email, first_name, last_name, image_url]
+        );
+        console.log(
+          `Korisnik sa Clerk ID ${id} uspješno unesen ili već postoji.`
+        );
+        break;
+
+      case "user.updated":
+        console.log("Obrađujem 'user.updated'...");
+        const {
+          id: updatedClerkId,
+          first_name: updatedFirstName,
+          last_name: updatedLastName,
+          username: updatedUsername,
+          image_url: updatedImageUrl,
+        } = data;
+
+        await pool.query(
+          `UPDATE users 
+           SET first_name = $1, last_name = $2, username = $3, profile_picture_url = $4
+           WHERE clerk_id = $5`,
+          [
+            updatedFirstName,
+            updatedLastName,
+            updatedUsername,
+            updatedImageUrl,
+            updatedClerkId,
+          ]
+        );
+        console.log(
+          `Korisnik sa Clerk ID ${updatedClerkId} uspješno ažuriran.`
+        );
+        break;
+
+      case "user.deleted":
+        console.log("Obrađujem 'user.deleted'...");
+        const { id: deletedClerkId } = data;
+
+        const deleteResult = await pool.query(
+          `DELETE FROM users WHERE clerk_id = $1`,
+          [deletedClerkId]
+        );
+
+        if (deleteResult.rowCount > 0) {
+          console.log(
+            `Korisnik sa Clerk ID ${deletedClerkId} uspješno obrisan iz baze.`
+          );
+        } else {
+          console.log(
+            `Korisnik sa Clerk ID ${deletedClerkId} nije pronađen u bazi.`
+          );
+        }
+        break;
+
+      default:
+        console.log(`Događaj '${type}' primljen, ali se ne obrađuje.`);
     }
 
-    try {
-      const dbUsername =
-        username || email.split("@")[0] + Math.floor(Math.random() * 1000);
-      console.log(`Pokušavam da upišem korisnika: ${dbUsername}`);
-
-      const query = `
-        INSERT INTO users (clerk_id, username, email, first_name, last_name, role, profile_picture_url)
-        VALUES ($1, $2, $3, $4, $5, 'standard', $6)
-        ON CONFLICT (clerk_id) DO NOTHING
-        RETURNING id;`;
-
-      const values = [id, dbUsername, email, first_name, last_name, image_url];
-      const result = await pool.query(query, values);
-
-      if (result.rowCount > 0) {
-        console.log(
-          `Korisnik ${dbUsername} je upisan u bazu sa ID: ${result.rows[0].id}`
-        );
-      } else {
-        console.log(
-          `Korisnik sa clerk_id ${id} već postoji u bazi, preskače se.`
-        );
-      }
-      res.status(201).send("Webhook uspješno obrađen.");
-    } catch (dbErr) {
-      console.error("Database error:", dbErr);
-      res
-        .status(500)
-        .json({ error: "Internal server error.", details: dbErr.message });
-    }
-  } else {
-    console.log(`Događaj '${type}' primljen, ali se ne obrađuje.`);
-    res.status(200).send("Webhook primljen ali nije obrađen.");
+    res.status(200).json({ success: true, message: "Webhook obrađen." });
+  } catch (dbErr) {
+    console.error(`Database error pri obradi događaja '${type}':`, dbErr);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
