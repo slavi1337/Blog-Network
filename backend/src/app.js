@@ -20,13 +20,19 @@ const metaRoutes = require("./api/routes/meta.routes");
 
 const app = express();
 
+app.use(
+  "/api/webhooks",
+  bodyParser.raw({ type: "application/json" }),
+  webhookRoutes
+);
+
 // Middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
 app.use(session(sessionConfig));
 
 app.use("/api/admin", adminRoutes);
-app.use("/api/webhooks", webhookRoutes);
+//app.use("/api/webhooks", webhookRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/users", userRoutes);
