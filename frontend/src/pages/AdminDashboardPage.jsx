@@ -449,14 +449,24 @@ const AdminDashboardPage = () => {
   const [activeTab, setActiveTab] = useState("issues");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // --- OVDJE DODAJEMO NOVI STATE --- pratimo period analitike
+  const [analyticsPeriod, setAnalyticsPeriod] = useState("7d");  
+
   const navigate = useNavigate();
+  
 
   const fetchData = useCallback(
-    async (tab) => {
+    async (tab, period = "7d") => { 
       setLoading(true);
       setData([]);
       try {
-        const response = await fetch(`/api/admin/${tab}`);
+        // Dinamički URL sa periodom
+        const url = tab === "analytics" 
+          ? `/api/admin/${tab}?period=${period}` 
+          : `/api/admin/${tab}`;
+          
+        const response = await fetch(url);
         if (response.status === 401) return navigate("/admin/login");
         if (!response.ok)
           throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
@@ -471,18 +481,26 @@ const AdminDashboardPage = () => {
     [navigate]
   );
 
+  // --- OVDJE DODAJemo FUNKCIJU handlePeriodChange --- kojom mijenjamo period analitike
+  const handlePeriodChange = (newPeriod) => {
+    setAnalyticsPeriod(newPeriod);
+    fetchData("analytics", newPeriod);
+  };
+
   useEffect(() => {
     if (
       activeTab === "issues" ||
       activeTab === "users" ||
       activeTab === "admins" ||
-      activeTab === "categories"
+      activeTab === "analytics"
     ) {
-      fetchData(activeTab);
+      // Ako je analytics, šaljemo trenutno izabrani period
+      const periodToSend = activeTab === "analytics" ? analyticsPeriod : "7d";
+      fetchData(activeTab, periodToSend);
     } else {
       setLoading(false);
     }
-  }, [activeTab, fetchData]);
+  }, [activeTab, fetchData]); // analyticsPeriod namjerno ne stavljamo ovdje jer imamo handlePeriodChange
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -768,6 +786,14 @@ const AdminDashboardPage = () => {
           >
             Kategorije
           </button>
+          <button
+          onClick={() => setActiveTab("analytics")}
+          className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+            activeTab === "analytics" ? "bg-primary text-white shadow" : "text-gray-600 hover:bg-gray-300"
+          }`}
+        >
+          Analitika 
+        </button>
         </nav>
       </div>
 
@@ -781,6 +807,13 @@ const AdminDashboardPage = () => {
             {activeTab === "admins" && renderAdminsTable()}
             {activeTab === "censored" && <CensoredWordsManager />}
             {activeTab === "categories" && <CategoriesManager />}
+            {activeTab === "analytics" && 
+            ( <AdminAnalytics 
+              data={data} 
+              currentPeriod={analyticsPeriod} 
+              onPeriodChange={handlePeriodChange} 
+            />
+          )}
           </div>
         )}
       </div>
