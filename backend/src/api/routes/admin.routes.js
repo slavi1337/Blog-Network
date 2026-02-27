@@ -33,4 +33,7 @@ router.get("/categories", adminController.getAllCategories);
 router.post("/categories", adminController.createCategory);
 router.delete("/categories/:id", adminController.deleteCategory);
 
+// RUTA ZA ANALITIKU
+router.get("/analytics", adminController.getAdminAnalytics);
+
 module.exports = router;
