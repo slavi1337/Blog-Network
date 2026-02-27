@@ -440,3 +440,83 @@ exports.deleteCategory = async (req, res) => {
     client.release();
   }
 };
+
+// DOHVATANJE ANALITIKE ZA ADMIN DASHBOARD 
+exports.getAdminAnalytics = async (req, res) => {
+  // 1. Čitamo period koji šalje frontend (default je 7d)
+  const { period } = req.query; 
+
+  let interval = '7 days';
+  let dateFormat = 'YYYY-MM-DD';
+
+  if (period === '30d') {
+    interval = '30 days';
+  } else if (period === '12m') {
+    interval = '1 year';
+    dateFormat = 'YYYY-MM'; // Grupisanje po mjesecima da grafikon ne bude pretrpan
+  }
+
+  try {
+    // Osnovni brojači
+    const countsQuery = `
+      SELECT 
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM posts) as total_posts,
+        (SELECT COUNT(*) FROM reported_issues WHERE status = 'new') as pending_issues,
+        (SELECT COUNT(*) FROM comments) as total_comments
+    `;
+    const counts = await pool.query(countsQuery);
+
+    // Popularnost kategorija
+    const categoryQuery = `
+      SELECT c.name, COUNT(p.id) as value
+      FROM categories c
+      LEFT JOIN posts p ON c.id = p.category_id
+      GROUP BY c.name
+      HAVING COUNT(p.id) > 0
+    `;
+    const categories = await pool.query(categoryQuery);
+
+    // --- KLJUČNA IZMJENA: Dinamički interval i format datuma ---
+    const activityQuery = `
+      SELECT TO_CHAR(created_at, '${dateFormat}') as date, COUNT(*) as count
+      FROM posts
+      WHERE created_at > NOW() - INTERVAL '${interval}'
+      GROUP BY date
+      ORDER BY date ASC
+    `;
+    const activity = await pool.query(activityQuery);
+
+    // Top 5 najčitanijih tekstova
+    const topPostsQuery = `SELECT title, view_count FROM posts ORDER BY view_count DESC LIMIT 5`;
+    const topPosts = await pool.query(topPostsQuery);
+
+    // Najaktivniji autori
+    const topAuthorsQuery = `
+      SELECT u.username, COUNT(p.id) as count
+      FROM users u
+      JOIN posts p ON u.id = p.author_id
+      GROUP BY u.username
+      ORDER BY count DESC
+      LIMIT 5
+    `;
+    const topAuthors = await pool.query(topAuthorsQuery);
+
+    // Odnos problema
+    const issuesStatusQuery = `SELECT status, COUNT(*) as value FROM reported_issues GROUP BY status`;
+    const issuesStatus = await pool.query(issuesStatusQuery);
+
+    res.status(200).json({
+      summary: counts.rows[0],
+      categoryData: categories.rows,
+      activityData: activity.rows,
+      topPosts: topPosts.rows,
+      topAuthors: topAuthors.rows,
+      issuesStatus: issuesStatus.rows
+    });
+  } catch (error) {
+    console.error("Greška pri dohvatanju analitike:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+};
+
