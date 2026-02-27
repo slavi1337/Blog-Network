@@ -315,19 +315,21 @@ const AdminAnalytics = ({ data, currentPeriod, onPeriodChange }) => {
     <div className="space-y-8 p-4 bg-white rounded-lg">
       {/* Kartice sa brojkama */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Korisnici', val: data.summary.total_users, color: 'border-blue-500' },
-          { label: 'Objave', val: data.summary.total_posts, color: 'border-green-500' },
-          { label: 'Komentari', val: data.summary.total_comments, color: 'border-yellow-500' },
-          { label: 'Novi problemi', val: data.summary.pending_issues, color: 'border-red-500' }
-        ].map((item, i) => (
-          <div key={i} className={`p-4 bg-gray-50 border-l-4 ${item.color} rounded shadow-sm`}>
-            <p className="text-sm text-gray-500 uppercase font-bold">{item.label}</p>
-            <p className="text-2xl font-bold text-gray-800">{item.val}</p>
-          </div>
-        ))}
-      </div>
-
+      {[
+        { label: 'Ukupno Korisnika', val: data.summary.total_users, color: 'border-blue-500' },
+        { label: 'Moderatori', val: data.summary.total_moderators, color: 'border-purple-500' },
+        { label: 'Suspendovani', val: data.summary.suspended_users, color: 'border-red-600' },
+        { label: 'Novi danas', val: data.summary.new_users_today, color: 'border-orange-400' },
+        { label: 'Objave', val: data.summary.total_posts, color: 'border-green-500' },
+        { label: 'Komentari', val: data.summary.total_comments, color: 'border-yellow-500' },
+        { label: 'Novi problemi', val: data.summary.pending_issues, color: 'border-red-500' },
+      ].map((item, i) => (
+        <div key={i} className={`p-4 bg-gray-50 border-l-4 ${item.color} rounded shadow-sm`}>
+          <p className="text-sm text-gray-500 uppercase font-bold">{item.label}</p>
+          <p className="text-2xl font-bold text-gray-800">{item.val}</p>
+        </div>
+      ))}
+    </div>
     
     <div className="grid grid-cols-1 gap-8"> {/* Promijenjeno na 1 kolonu za maksimalnu širinu */}
   
