@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { confirmAction } from "../utils/confirm";
 
+// Alati za crtanje grafikona i prikaz analitike u AdminDashBoard-u ..
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+
 const CategoriesManager = () => {
   const [categories, setCategories] = useState([]);
   const [newName, setNewName] = useState("");
