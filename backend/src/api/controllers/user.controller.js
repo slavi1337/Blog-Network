@@ -441,3 +441,68 @@ exports.getProfileStatus = async (req, res) => {
     res.status(500).json({ error: "Greška na serveru." });
   }
 };
+
+  // DODAJ OVO ZA ANALITIKU
+exports.getUserStats = async (req, res) => {
+  const clerkId = req.auth.userId;
+  console.log("Pokušaj dohvatanja stats za Clerk ID:", clerkId);
+
+  try {
+    // Dohvaćamo pravi ID korisnika iz tvoje baze pomoću Clerk ID-a
+    const userId = await getInternalUserId(clerkId);
+    console.log("Interni ID u bazi:", userId);
+    
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+    // 1. Upit za kartice (ukupni podaci za prijavljenog korisnika)
+    // user.controller.js
+
+const statsQuery = `
+  SELECT 
+    (SELECT COUNT(*) FROM posts WHERE author_id = $1) as posts_count,
+    (SELECT COALESCE(SUM(view_count), 0) FROM posts WHERE author_id = $1) as total_views,
+    (SELECT COUNT(*) FROM post_votes pv JOIN posts p ON pv.post_id = p.id WHERE p.author_id = $1) as likes_count,
+    (SELECT COUNT(*) FROM followers WHERE followed_id = $1) as followers_count,
+    (SELECT COUNT(*) FROM comments c JOIN posts p ON c.post_id = p.id WHERE p.author_id = $1) as comments_count
+`;
+    // 2. Upit za grafikon (broj objava po danima)
+    const chartQuery = `
+      SELECT TO_CHAR(created_at, 'DD.MM') as label, COUNT(*) as value
+      FROM posts
+      WHERE author_id = $1
+      GROUP BY label, created_at
+      ORDER BY created_at ASC
+    `;
+
+    // 3. Upit za preglede po kategorijama
+const categoryQuery = `
+  SELECT c.name as label, SUM(p.view_count) as value
+  FROM posts p
+  JOIN categories c ON p.category_id = c.id
+  WHERE p.author_id = $1
+  GROUP BY c.name
+`;
+
+const stats = await pool.query(statsQuery, [userId]);
+const chart = await pool.query(chartQuery, [userId]);
+const categories = await pool.query(categoryQuery, [userId]); // Novi upit
+
+res.status(200).json({
+  cards: {
+    posts_count: stats.rows[0].posts_count || 0,
+    total_views: stats.rows[0].total_views || 0,
+    comments_count: stats.rows[0].comments_count || 0,
+    likes_count: stats.rows[0].likes_count || 0,
+    followers_count: stats.rows[0].followers_count || 0
+  },
+  chartData: chart.rows,
+  categoryData: categories.rows // Šaljemo podatke o kategorijama
+});
+  } catch (error) {
+    console.error("Greška pri dohvatanju analitike:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+
+};
