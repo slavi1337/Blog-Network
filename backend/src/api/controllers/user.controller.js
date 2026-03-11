@@ -87,7 +87,7 @@ exports.getInterests = async (req, res) => {
   }
 };
 
-/
+
 exports.updateInterests = async (req, res) => {
   const clerkId = req.auth.userId;
   const { tagIds } = req.body; // Očekujemo niz brojeva, npr. [1, 5, 12]
