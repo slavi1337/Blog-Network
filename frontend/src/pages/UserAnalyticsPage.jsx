@@ -52,7 +52,7 @@ const UserAnalyticsPage = () => {
     </div>
   );
 
-  // DEFINICIJA SVIH KATEGORIJA I NJIHOVIH BOJA (Kao kod admina)
+  
   const allCategories = [
     { name: "Društvo", color: "#3b82f6" },
     { name: "Edukacija", color: "#a855f7" },
@@ -70,12 +70,12 @@ const UserAnalyticsPage = () => {
     <div className="min-h-screen bg-gray-50 p-4 md:p-10">
       <div className="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-200">
         
-        {/* NASLOV */}
+        
         <div className="bg-orange-500 text-white p-3 rounded-t-lg mb-6 shadow-md">
           <h1 className="text-xl font-bold text-center uppercase tracking-wider">Analitika mog profila</h1>
         </div>
         
-        {/* KARTICE */}
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
           {[
             { label: "OBJAVE", value: data.cards.posts_count },
@@ -92,10 +92,10 @@ const UserAnalyticsPage = () => {
           ))}
         </div>
 
-        {/* DONJA SEKCIJA */}
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* LIJEVO: AKTIVNOST OBJAVLJIVANJA */}
+          
           <div className="lg:col-span-2 border-4 border-orange-400 rounded-2xl p-6 bg-white shadow-inner">
             <h3 className="text-lg font-bold text-gray-700 mb-6 flex items-center">
               <span className="w-2 h-6 bg-orange-500 mr-3 rounded-full"></span>
@@ -120,11 +120,11 @@ const UserAnalyticsPage = () => {
             </div>
           </div>
 
-          {/* DESNO: ZASTUPLJENOST KATEGORIJA (Sa legendom kao kod admina) */}
+          
           <div className="border-4 border-gray-100 rounded-2xl p-6 bg-white shadow-sm flex flex-col">
             <h3 className="text-md font-bold text-gray-700 mb-6 uppercase tracking-tight">Zastupljenost kategorija</h3>
             
-            {/* GRAFIKON */}
+            
             <div className="h-48 w-full mb-6">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.categoryData} layout="vertical">
@@ -141,7 +141,7 @@ const UserAnalyticsPage = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* LEGENDA (Identično kao na slici admin panela) */}
+            
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-auto border-t pt-4">
               {allCategories.map((cat, idx) => (
                 <div key={idx} className="flex items-center space-x-1">

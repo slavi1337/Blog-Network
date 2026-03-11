@@ -1,7 +1,7 @@
 const { pool } = require("../../config/db");
 const { getInternalUserId } = require("../../services/userService");
 
-// DOHVATANJE VLASTITOG PROFILA
+
 exports.getCurrentUserProfile = async (req, res) => {
   if (!req.auth.userId) {
     return res.status(401).json({ error: "Niste autorizovani." });
@@ -46,7 +46,7 @@ exports.getCurrentUserProfile = async (req, res) => {
   }
 };
 
-// DOHVATANJE MOJIH DRAFTOVA/ZAKAZANIH OBJAVA
+
 exports.getDrafts = async (req, res) => {
   const clerkId = req.auth.userId;
   try {
@@ -67,7 +67,7 @@ exports.getDrafts = async (req, res) => {
   }
 };
 
-// DOHVATANJE FOLLOWING TAGOVA
+
 exports.getInterests = async (req, res) => {
   const clerkId = req.auth.userId;
   try {
@@ -87,7 +87,7 @@ exports.getInterests = async (req, res) => {
   }
 };
 
-// AZURIRANJE MOJIH FOLLOWING TAGOVA
+/
 exports.updateInterests = async (req, res) => {
   const clerkId = req.auth.userId;
   const { tagIds } = req.body; // Očekujemo niz brojeva, npr. [1, 5, 12]
@@ -406,7 +406,7 @@ exports.unblockUser = async (req, res) => {
   }
 };
 
-// PREGLED PROFILA NECIJEG AKO SAM LOGINAN
+
 exports.getProfileStatus = async (req, res) => {
   const { username } = req.params;
   const viewerClerkId = req.auth.userId;
@@ -442,13 +442,13 @@ exports.getProfileStatus = async (req, res) => {
   }
 };
 
-  // DODAJ OVO ZA ANALITIKU
+  
 exports.getUserStats = async (req, res) => {
   const clerkId = req.auth.userId;
   console.log("Pokušaj dohvatanja stats za Clerk ID:", clerkId);
 
   try {
-    // Dohvaćamo pravi ID korisnika iz tvoje baze pomoću Clerk ID-a
+   
     const userId = await getInternalUserId(clerkId);
     console.log("Interni ID u bazi:", userId);
     
@@ -456,8 +456,6 @@ exports.getUserStats = async (req, res) => {
       return res.status(404).json({ error: "Korisnik nije pronađen." });
     }
 
-    // 1. Upit za kartice (ukupni podaci za prijavljenog korisnika)
-    // user.controller.js
 
 const statsQuery = `
   SELECT 
@@ -467,7 +465,7 @@ const statsQuery = `
     (SELECT COUNT(*) FROM followers WHERE followed_id = $1) as followers_count,
     (SELECT COUNT(*) FROM comments c JOIN posts p ON c.post_id = p.id WHERE p.author_id = $1) as comments_count
 `;
-    // 2. Upit za grafikon (broj objava po danima)
+    
     const chartQuery = `
       SELECT TO_CHAR(created_at, 'DD.MM') as label, COUNT(*) as value
       FROM posts
@@ -476,7 +474,6 @@ const statsQuery = `
       ORDER BY created_at ASC
     `;
 
-    // 3. Upit za preglede po kategorijama
 const categoryQuery = `
   SELECT c.name as label, SUM(p.view_count) as value
   FROM posts p

@@ -5,7 +5,7 @@ const { ClerkExpressWithAuth } = require("../../config/clerk");
 
 router.use(ClerkExpressWithAuth());
 
-  // NOVA RUTA ZA ANALITIKU
+  
 router.get("/stats/me", userController.getUserStats);
 
 router.put(

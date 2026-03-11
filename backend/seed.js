@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 const { faker } = require('@faker-js/faker');
 
-// Ovdje koristiš iste podatke kao u tvom .env fajlu
+
 const pool = new Pool({
   user: 'postgres',
   host: '127.0.0.1',
