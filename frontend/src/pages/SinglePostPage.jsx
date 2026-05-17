@@ -112,6 +112,7 @@ const SinglePostPage = () => {
 
   const [isPinned, setIsPinned] = useState(false);
   const [copySuccess, setCopySuccess] = useState("");
+  const COMMENT_API = import.meta.env.VITE_COMMENT_API;
 
   useEffect(() => {
     const fetchPublicPostData = async () => {
@@ -193,7 +194,7 @@ const SinglePostPage = () => {
     if (post?.id) {
       const fetchComments = async () => {
         try {
-          const res = await fetch(`/api/posts/${post.id}/comments`);
+          const res = await fetch(`${COMMENT_API}/api/comments/post/${post.id}`);
           if (!res.ok) return;
           const data = await res.json();
           setComments(data);
@@ -300,7 +301,7 @@ const SinglePostPage = () => {
     try {
       const token = await getToken();
 
-      const response = await fetch(`/api/comments/${commentId}`, {
+      const response = await fetch(`${COMMENT_API}/api/comments/${commentId}`, {
         method: "DELETE",
 
         headers: { Authorization: `Bearer ${token}` },
