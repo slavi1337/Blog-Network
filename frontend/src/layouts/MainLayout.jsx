@@ -9,7 +9,7 @@ const MainLayout = () => {
         <Navbar />
       </div>
       <SidePanel />
-      <main>
+      <main className="pt-20">
         <Outlet />
       </main>
     </div>

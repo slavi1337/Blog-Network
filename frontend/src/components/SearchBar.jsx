@@ -183,7 +183,7 @@ const SearchBar = ({ onSearch }) => {
   };
 
   return (
-    <div className="relative" ref={searchBarRef}>
+    <div className="relative flex-1 w-full" ref={searchBarRef}>
       {showFilters && (
         <div className="absolute top-16 left-0 w-128 h-auto bg-white border border-gray-300 shadow-lg z-50 p-4">
           <div className="flex flex-col gap-4 text-gray-700">
@@ -413,7 +413,7 @@ const SearchBar = ({ onSearch }) => {
 
       <form
         onSubmit={handleSubmit}
-        className="flex items-center w-0.6 max-w-md mx-auto"
+        className="flex items-center flex-1 w-full max-w-3xl"
       >
         <button
           type="button"
