@@ -52,6 +52,7 @@ const BlogCreationPage = () => {
   const [uploadedFiles, setUploadedFiles] = useState(new Map());
 
   const uploadedFilesRef = useRef(uploadedFiles);
+  const POST_API = import.meta.env.VITE_POST_API;
 
   useEffect(() => {
     uploadedFilesRef.current = uploadedFiles;
@@ -278,7 +279,7 @@ const BlogCreationPage = () => {
         try {
           const token = await getToken();
 
-          const response = await fetch(`/api/posts/${slug}/edit`, {
+          const response = await fetch(`${POST_API}/api/posts/${slug}/edit`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -432,12 +433,12 @@ const BlogCreationPage = () => {
       };
 
       const response = isEditMode
-        ? await fetch(`/api/posts/${postId}`, {
+        ? await fetch(`${POST_API}/api/posts/${postId}`, {
             method: "PUT",
             headers,
             body: JSON.stringify(postData),
           })
-        : await fetch("/api/posts", {
+        : await fetch(`${POST_API}/api/posts`, {
             method: "POST",
             headers,
             body: JSON.stringify(postData),

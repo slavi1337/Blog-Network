@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const postController = require("../controllers/post.controller");
+const postController = require("../../post-service/controllers/post.controller");
 const usersController = require("../controllers/users.controller");
 
 // RUTE ZA POSTOVE

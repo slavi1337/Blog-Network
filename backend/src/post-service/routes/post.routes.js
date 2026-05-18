@@ -39,5 +39,6 @@ router
 
 router.put("/:postId", postController.updatePost);
 router.delete("/:postId", postController.deletePost);
+router.get("/:slug", postController.getPublicPostBySlug);
 
 module.exports = router;

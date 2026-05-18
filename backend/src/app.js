@@ -6,7 +6,6 @@ const session = require("express-session");
 const sessionConfig = require("./config/session");
 
 const publicRoutes = require("./api/routes/public.routes");
-const postRoutes = require("./api/routes/post.routes");
 const adminRoutes = require("./api/routes/admin.routes");
 const profileRoutes = require("./api/routes/profile.routes");
 const userRoutes = require("./api/routes/user.routes");
@@ -35,7 +34,6 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/public", publicRoutes);
-app.use("/api/posts", postRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api", mediaRoutes);
 app.use("/api", utilityRoutes);

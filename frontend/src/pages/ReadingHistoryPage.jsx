@@ -6,13 +6,14 @@ const ReadingHistoryPage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
+  const POST_API = import.meta.env.VITE_POST_API;
 
   useEffect(() => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
         const token = await getToken();
-        const response = await fetch("/api/posts/history", {
+        const response = await fetch(`${POST_API}/api/posts/history`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -33,7 +34,7 @@ const ReadingHistoryPage = () => {
 
     try {
       const token = await getToken();
-      const response = await fetch(`/api/posts/${postIdToRemove}/history`, {
+      const response = await fetch(`${POST_API}/api/posts/${postIdToRemove}/history`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

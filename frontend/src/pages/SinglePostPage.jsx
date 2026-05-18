@@ -113,6 +113,7 @@ const SinglePostPage = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [copySuccess, setCopySuccess] = useState("");
   const COMMENT_API = import.meta.env.VITE_COMMENT_API;
+  const POST_API = import.meta.env.VITE_POST_API;
 
   useEffect(() => {
     const fetchPublicPostData = async () => {
@@ -121,7 +122,7 @@ const SinglePostPage = () => {
       setTranslatedTitle(null);
       setTranslatedContent(null);
       try {
-        const res = await fetch(`/api/public/posts/${slug}`);
+        const res = await fetch(`${POST_API}/api/posts/${slug}`);
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || `Greška: ${res.status}`);
@@ -146,7 +147,7 @@ const SinglePostPage = () => {
       const recordReadingHistory = async () => {
         try {
           const token = await getToken();
-          fetch(`/api/posts/${post.id}/history`, {
+          fetch(`${POST_API}/api/posts/${post.id}/history`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -163,7 +164,7 @@ const SinglePostPage = () => {
       const fetchUserStatus = async () => {
         try {
           const token = await getToken();
-          const res = await fetch(`/api/posts/${post.id}/status`, {
+          const res = await fetch(`${POST_API}/api/posts/${post.id}/status`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) return;
@@ -218,13 +219,13 @@ const SinglePostPage = () => {
       let finalVoteType = newVoteType;
 
       if (newVoteType === userVote) {
-        response = await fetch(`/api/posts/${post.id}/vote`, {
+        response = await fetch(`${POST_API}/api/posts/${post.id}/vote`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         });
         finalVoteType = null;
       } else {
-        response = await fetch(`/api/posts/${post.id}/vote`, {
+        response = await fetch(`${POST_API}/api/posts/${post.id}/vote`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -249,7 +250,7 @@ const SinglePostPage = () => {
     setIsSaved(newSavedState);
     try {
       const token = await getToken();
-      const response = await fetch(`/api/posts/${post.id}/save`, {
+      const response = await fetch(`${POST_API}/api/posts/${post.id}/save`, {
         method: newSavedState ? "POST" : "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -272,7 +273,7 @@ const SinglePostPage = () => {
     try {
       const token = await getToken();
 
-      const response = await fetch(`/api/posts/${post.id}`, {
+      const response = await fetch(`${POST_API}/api/posts/${post.id}`, {
         method: "DELETE",
 
         headers: { Authorization: `Bearer ${token}` },
@@ -327,7 +328,7 @@ const SinglePostPage = () => {
 
     try {
       const token = await getToken();
-      const url = `/api/posts/${post.id}/${newPinnedState ? "pin" : "unpin"}`;
+      const url = `${POST_API}/api/posts/${post.id}/${newPinnedState ? "pin" : "unpin"}`;
       const response = await fetch(url, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
