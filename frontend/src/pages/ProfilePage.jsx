@@ -359,7 +359,10 @@ const ProfilePage = () => {
                 </Link>
                 <hr className="my-2 border-gray-200" />
                 <Link to="edit" className={getFinalLinkClass("edit")}>
-                  Uredi Profil
+                  Uredi profil
+                </Link>
+                <Link to="/my-analytics" className={getFinalLinkClass("analytics")}>
+                  Analitika profila
                 </Link>
                 <Link to="drafts" className={getFinalLinkClass("drafts")}>
                   Draftovi i zakazane objave
