@@ -10,6 +10,7 @@ const CreateComment = ({
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const { getToken } = useAuth();
+  const COMMENT_API = import.meta.env.VITE_COMMENT_API;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +21,7 @@ const CreateComment = ({
 
     try {
       const token = await getToken();
-      const res = await fetch("/api/comments", {
+      const res = await fetch(`${COMMENT_API}/api/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

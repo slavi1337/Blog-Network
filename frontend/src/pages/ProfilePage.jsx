@@ -362,7 +362,7 @@ const ProfilePage = () => {
                   Uredi Profil
                 </Link>
                 <Link to="drafts" className={getFinalLinkClass("drafts")}>
-                  Draftovi
+                  Draftovi i zakazane objave
                 </Link>
               </>
             )}

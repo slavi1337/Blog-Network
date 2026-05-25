@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { confirmAction } from "../utils/confirm";
 
+// Alati za crtanje grafikona i prikaz analitike u AdminDashBoard-u ..
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+
 const CategoriesManager = () => {
   const [categories, setCategories] = useState([]);
   const [newName, setNewName] = useState("");
@@ -291,18 +294,181 @@ const CensoredWordsManager = () => {
   );
 };
 
+// Analitika za Administratora ..
+const AdminAnalytics = ({ data, currentPeriod, onPeriodChange }) => {
+  if (!data || !data.summary) return <p className="p-4">Nema podataka za prikaz.</p>;
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  
+  // Ovo osigurava da Recharts dobije prave brojeve, a ne stringove "5", "10" itd.
+  const pieData = data.categoryData?.map(item => ({
+    name: item.name,
+    value: Number(item.value) 
+  })) || [];
+
+  const activityData = data.activityData?.map(item => ({
+    ...item,
+    count: Number(item.count)
+  })) || [];
+
+  return (
+    <div className="space-y-8 p-4 bg-white rounded-lg">
+      {/* Kartice sa brojkama */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {[
+        { label: 'Ukupno Korisnika', val: data.summary.total_users, color: 'border-blue-500' },
+        { label: 'Moderatori', val: data.summary.total_moderators, color: 'border-purple-500' },
+        { label: 'Suspendovani', val: data.summary.suspended_users, color: 'border-red-600' },
+        { label: 'Novi danas', val: data.summary.new_users_today, color: 'border-orange-400' },
+        { label: 'Objave', val: data.summary.total_posts, color: 'border-green-500' },
+        { label: 'Komentari', val: data.summary.total_comments, color: 'border-yellow-500' },
+        { label: 'Novi problemi', val: data.summary.pending_issues, color: 'border-red-500' },
+      ].map((item, i) => (
+        <div key={i} className={`p-4 bg-gray-50 border-l-4 ${item.color} rounded shadow-sm`}>
+          <p className="text-sm text-gray-500 uppercase font-bold">{item.label}</p>
+          <p className="text-2xl font-bold text-gray-800">{item.val}</p>
+        </div>
+      ))}
+    </div>
+    
+    <div className="grid grid-cols-1 gap-8"> {/* Promijenjeno na 1 kolonu za maksimalnu širinu */}
+  
+      {/* Grafik aktivnosti sa dinamičkim naslovom i selektorom */}
+      <div className="bg-gray-50 p-6 rounded shadow">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-700">
+            {currentPeriod === "7d" && "Objave u zadnjih 7 dana"}
+            {currentPeriod === "30d" && "Objave u zadnjih mjesec dana"}
+            {currentPeriod === "12m" && "Objave u zadnjih godinu dana"}
+          </h3>
+      
+        <select 
+          value={currentPeriod} 
+          onChange={(e) => onPeriodChange(e.target.value)}
+          className="p-2 border rounded bg-white text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+        >
+          <option value="7d">Zadnjih 7 dana</option>
+          <option value="30d">Zadnjih 30 dana</option>
+          <option value="12m">Zadnjih 12 mjeseci</option>
+        </select>
+      </div>
+
+      <div className="h-72">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={activityData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis 
+              dataKey="date" 
+              tick={{fontSize: 12}} 
+              interval={currentPeriod === "30d" ? 2 : 0} // Da se datumi ne preklapaju na 30 dana
+            />
+            <YAxis tick={{fontSize: 12}} />
+            <Tooltip />
+            <Bar 
+              dataKey="count" 
+              fill="#8884d8" 
+              radius={[4, 4, 0, 0]} 
+              name="Broj objava" 
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+
+  {/* Pie Chart kategorija - SADA SA VIŠE PROSTORA */}
+  <div className="bg-gray-50 p-6 rounded shadow">
+    <h3 className="text-lg font-semibold mb-4 text-gray-700 text-center">Zastupljenost kategorija</h3>
+      <div className="h-96"> {/* Značajno povećana visina sa 64 na 96 */}
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={120} // Povećan radius jer sada imamo mjesta
+              innerRadius={80}  // Povećan radius
+              paddingAngle={5}
+              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            >
+              {pieData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#fff" strokeWidth={2} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value, name) => [`${value} objava`, name]} />
+            <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  </div>
+
+
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">  
+  {/* TOP AUTORI - Horizontalni grafik */}
+  <div className="bg-gray-50 p-4 rounded shadow">
+    <h3 className="text-lg font-semibold mb-4 text-gray-700">Najaktivniji autori</h3>
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data.topAuthors} layout="vertical">
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis type="number" />
+          <YAxis dataKey="username" type="category" width={100} />
+          <Tooltip />
+          <Bar dataKey="count" fill="#82ca9d" name="Broj objava" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
+
+  {/* TOP TEKSTOVI - Vizuelna lista */}
+  <div className="bg-gray-50 p-4 rounded shadow">
+    <h3 className="text-lg font-semibold mb-4 text-gray-700">Top 5 najčitanijih tekstova</h3>
+    <div className="space-y-4">
+      {data.topPosts.map((post, i) => (
+        <div key={i} className="group">
+          <div className="flex justify-between mb-1">
+            <span className="text-sm font-medium text-gray-700 truncate w-64">{post.title}</span>
+            <span className="text-sm font-bold text-primary">{post.view_count} pregleda</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-primary h-2 rounded-full transition-all duration-500" 
+              style={{ width: `${(post.view_count / data.topPosts[0].view_count) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+ </div>
+    </div>
+  );
+};
+
 const AdminDashboardPage = () => {
   const [activeTab, setActiveTab] = useState("issues");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // --- OVDJE DODAJEMO NOVI STATE --- pratimo period analitike
+  const [analyticsPeriod, setAnalyticsPeriod] = useState("7d");  
+
   const navigate = useNavigate();
+  
 
   const fetchData = useCallback(
-    async (tab) => {
+    async (tab, period = "7d") => { 
       setLoading(true);
       setData([]);
       try {
-        const response = await fetch(`/api/admin/${tab}`);
+        // Dinamički URL sa periodom
+        const url = tab === "analytics" 
+          ? `/api/admin/${tab}?period=${period}` 
+          : `/api/admin/${tab}`;
+          
+        const response = await fetch(url);
         if (response.status === 401) return navigate("/admin/login");
         if (!response.ok)
           throw new Error(`Greška pri dohvatanju podataka za ${tab}`);
@@ -317,18 +483,26 @@ const AdminDashboardPage = () => {
     [navigate]
   );
 
+  // --- OVDJE DODAJemo FUNKCIJU handlePeriodChange --- kojom mijenjamo period analitike
+  const handlePeriodChange = (newPeriod) => {
+    setAnalyticsPeriod(newPeriod);
+    fetchData("analytics", newPeriod);
+  };
+
   useEffect(() => {
     if (
       activeTab === "issues" ||
       activeTab === "users" ||
       activeTab === "admins" ||
-      activeTab === "categories"
+      activeTab === "analytics"
     ) {
-      fetchData(activeTab);
+      // Ako je analytics, šaljemo trenutno izabrani period
+      const periodToSend = activeTab === "analytics" ? analyticsPeriod : "7d";
+      fetchData(activeTab, periodToSend);
     } else {
       setLoading(false);
     }
-  }, [activeTab, fetchData]);
+  }, [activeTab, fetchData]); // analyticsPeriod namjerno ne stavljamo ovdje jer imamo handlePeriodChange
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -614,6 +788,14 @@ const AdminDashboardPage = () => {
           >
             Kategorije
           </button>
+          <button
+          onClick={() => setActiveTab("analytics")}
+          className={`w-full py-2 px-4 font-semibold rounded-md transition-colors ${
+            activeTab === "analytics" ? "bg-primary text-white shadow" : "text-gray-600 hover:bg-gray-300"
+          }`}
+        >
+          Analitika 
+        </button>
         </nav>
       </div>
 
@@ -627,6 +809,13 @@ const AdminDashboardPage = () => {
             {activeTab === "admins" && renderAdminsTable()}
             {activeTab === "censored" && <CensoredWordsManager />}
             {activeTab === "categories" && <CategoriesManager />}
+            {activeTab === "analytics" && 
+            ( <AdminAnalytics 
+              data={data} 
+              currentPeriod={analyticsPeriod} 
+              onPeriodChange={handlePeriodChange} 
+            />
+          )}
           </div>
         )}
       </div>

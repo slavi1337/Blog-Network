@@ -9,6 +9,7 @@ const DraftsPage = () => {
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState("drafts");
+  const POST_API = import.meta.env.VITE_POST_API;
 
   const fetchDrafts = async () => {
     setLoading(true);
@@ -40,7 +41,7 @@ const DraftsPage = () => {
 
     try {
       const token = await getToken();
-      const response = await fetch(`/api/posts/${postId}/draft`, {
+      const response = await fetch(`${POST_API}/api/posts/${postId}/draft`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

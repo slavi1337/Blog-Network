@@ -113,7 +113,7 @@ const Navbar = () => {
   );
 
   return (
-    <div className="w-full h-16 md:h-20 flex items-center justify-between relative">
+    <div className="fixed top-0 left-0 w-full h-16 md:h-20 flex items-center justify-between bg-background/90 backdrop-blur-md shadow-md z-50 px-4">
       <Link
         to="/"
         className="flex items-center gap-4 text-2xl font-bold select-none mr-4"
@@ -124,7 +124,7 @@ const Navbar = () => {
       </Link>
 
       {/* Desktop Meni */}
-      <div className="hidden md:flex items-center gap-8 xl:gap-12 font-bold">
+      <div className="hidden md:flex items-center gap-8 xl:gap-12 font-bold flex-1 ml-8">
         <SearchBar onSearch={handleSearch} />
         <div
           ref={dropdownRef}

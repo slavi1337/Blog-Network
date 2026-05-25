@@ -12,6 +12,7 @@ const ForYouPage = () => {
 
   const { getToken } = useAuth();
   const { isSignedIn, isLoaded } = useUser();
+  const POST_API = import.meta.env.VITE_POST_API;
 
   useEffect(() => {
     if (!isLoaded) {
@@ -30,7 +31,7 @@ const ForYouPage = () => {
       setInitialLoad(true);
       try {
         const token = await getToken();
-        const res = await fetch(`/api/posts/foryou?page=1`, {
+        const res = await fetch(`${POST_API}/api/posts/foryou?page=1`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -58,7 +59,7 @@ const ForYouPage = () => {
   const fetchMorePosts = async () => {
     try {
       const token = await getToken();
-      const res = await fetch(`/api/posts/foryou?page=${page}`, {
+      const res = await fetch(`${POST_API}/api/posts/foryou?page=${page}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

@@ -33,6 +33,7 @@ const NotificationBell = () => {
   const [showAll, setShowAll] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const notificationRef = useRef(null);
+  const API = import.meta.env.VITE_NOTIFICATION_API;
 
   const fetchNotifications = useCallback(async () => {
     if (!isSignedIn || !isLoaded) return;
@@ -53,7 +54,7 @@ const NotificationBell = () => {
     }
 
     try {
-      const res = await fetch("/api/notifications", {
+      const res = await fetch(`${API}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) return;
@@ -100,7 +101,7 @@ const NotificationBell = () => {
     setIsMarking(true);
     try {
       const token = await getToken();
-      const response = await fetch("/api/notifications/mark-as-read", {
+      const response = await fetch(`${API}/api/notifications/mark-as-read`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -134,7 +135,7 @@ const NotificationBell = () => {
       );
       try {
         const token = await getToken();
-        await fetch(`/api/notifications/${notification.id}/read`, {
+        await fetch(`${API}/api/notifications/${notification.id}/read`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` },
         });

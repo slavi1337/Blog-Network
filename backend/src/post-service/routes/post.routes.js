@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const postController = require("../controllers/post.controller");
-const commentController = require("../controllers/comment.controller");
+const commentController = require("../../comment-service/controllers/comment.controller");
 const { ClerkExpressWithAuth } = require("../../config/clerk");
 
 // JAVNE RUTE
@@ -39,5 +39,6 @@ router
 
 router.put("/:postId", postController.updatePost);
 router.delete("/:postId", postController.deletePost);
+router.get("/:slug", postController.getPublicPostBySlug);
 
 module.exports = router;
