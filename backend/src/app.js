@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
 const session = require("express-session");
@@ -16,6 +17,13 @@ const utilityRoutes = require("./api/routes/utility.routes");
 const metaRoutes = require("./api/routes/meta.routes");
 
 const app = express();
+
+app.use(cors({
+ origin: "http://127.0.0.1:5173",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 app.use(
   "/api/webhooks",

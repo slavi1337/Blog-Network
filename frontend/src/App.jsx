@@ -1,4 +1,6 @@
 import { Routes, Route, Link, useSearchParams } from "react-router-dom";
+import UserAnalyticsPage from "./pages/UserAnalyticsPage";
+
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-react";
 import { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
@@ -304,6 +306,8 @@ const App = () => {
 
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/my-analytics" element={<UserAnalyticsPage />} />
+        
         <Route
           path="/admin/issues/:issueId"
           element={<AdminIssueDetailsPage />}

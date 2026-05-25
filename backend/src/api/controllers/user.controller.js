@@ -1,7 +1,7 @@
 const { pool } = require("../../config/db");
 const { getInternalUserId } = require("../../services/userService");
 
-// DOHVATANJE VLASTITOG PROFILA
+
 exports.getCurrentUserProfile = async (req, res) => {
   if (!req.auth.userId) {
     return res.status(401).json({ error: "Niste autorizovani." });
@@ -46,7 +46,7 @@ exports.getCurrentUserProfile = async (req, res) => {
   }
 };
 
-// DOHVATANJE MOJIH DRAFTOVA/ZAKAZANIH OBJAVA
+
 exports.getDrafts = async (req, res) => {
   const clerkId = req.auth.userId;
   try {
@@ -67,7 +67,7 @@ exports.getDrafts = async (req, res) => {
   }
 };
 
-// DOHVATANJE FOLLOWING TAGOVA
+
 exports.getInterests = async (req, res) => {
   const clerkId = req.auth.userId;
   try {
@@ -87,7 +87,7 @@ exports.getInterests = async (req, res) => {
   }
 };
 
-// AZURIRANJE MOJIH FOLLOWING TAGOVA
+
 exports.updateInterests = async (req, res) => {
   const clerkId = req.auth.userId;
   const { tagIds } = req.body; // Očekujemo niz brojeva, npr. [1, 5, 12]
@@ -406,7 +406,7 @@ exports.unblockUser = async (req, res) => {
   }
 };
 
-// PREGLED PROFILA NECIJEG AKO SAM LOGINAN
+
 exports.getProfileStatus = async (req, res) => {
   const { username } = req.params;
   const viewerClerkId = req.auth.userId;
@@ -440,4 +440,66 @@ exports.getProfileStatus = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Greška na serveru." });
   }
+};
+
+  
+exports.getUserStats = async (req, res) => {
+  const clerkId = req.auth.userId;
+  console.log("Pokušaj dohvatanja stats za Clerk ID:", clerkId);
+
+  try {
+   
+    const userId = await getInternalUserId(clerkId);
+    console.log("Interni ID u bazi:", userId);
+    
+    if (!userId) {
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    }
+
+
+const statsQuery = `
+  SELECT 
+    (SELECT COUNT(*) FROM posts WHERE author_id = $1) as posts_count,
+    (SELECT COALESCE(SUM(view_count), 0) FROM posts WHERE author_id = $1) as total_views,
+    (SELECT COUNT(*) FROM post_votes pv JOIN posts p ON pv.post_id = p.id WHERE p.author_id = $1) as likes_count,
+    (SELECT COUNT(*) FROM followers WHERE followed_id = $1) as followers_count,
+    (SELECT COUNT(*) FROM comments c JOIN posts p ON c.post_id = p.id WHERE p.author_id = $1) as comments_count
+`;
+    
+    const chartQuery = `
+      SELECT TO_CHAR(created_at, 'DD.MM') as label, COUNT(*) as value
+      FROM posts
+      WHERE author_id = $1
+      GROUP BY label, created_at
+      ORDER BY created_at ASC
+    `;
+
+const categoryQuery = `
+  SELECT c.name as label, SUM(p.view_count) as value
+  FROM posts p
+  JOIN categories c ON p.category_id = c.id
+  WHERE p.author_id = $1
+  GROUP BY c.name
+`;
+
+const stats = await pool.query(statsQuery, [userId]);
+const chart = await pool.query(chartQuery, [userId]);
+const categories = await pool.query(categoryQuery, [userId]); // Novi upit
+
+res.status(200).json({
+  cards: {
+    posts_count: stats.rows[0].posts_count || 0,
+    total_views: stats.rows[0].total_views || 0,
+    comments_count: stats.rows[0].comments_count || 0,
+    likes_count: stats.rows[0].likes_count || 0,
+    followers_count: stats.rows[0].followers_count || 0
+  },
+  chartData: chart.rows,
+  categoryData: categories.rows // Šaljemo podatke o kategorijama
+});
+  } catch (error) {
+    console.error("Greška pri dohvatanju analitike:", error);
+    res.status(500).json({ error: "Greška na serveru." });
+  }
+
 };
